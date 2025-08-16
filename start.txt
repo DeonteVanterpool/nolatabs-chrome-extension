@@ -1,5 +1,0 @@
-
-> NolaTabs - Git Based Tab Manager@5.0.4 start /home/deonte/projects/nolatabs-chrome-extension
-> node utils/webserver.js
-
- ELIFECYCLE  Command failed with exit code 1.
