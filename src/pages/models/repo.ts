@@ -1,7 +1,17 @@
+import { Commit } from './commit';
+
 class Repo {
+    id: number;
+    name: string;
+    commits: Commit[];
+
     constructor(
-        public readonly id: number,
-        public name: string,
-        public commits: string,
-    ) {}
+       id: number,
+       name: string,
+       commits: Commit[],
+    ) {
+        this.id = id;
+        this.name = name;
+        this.commits = commits;
+    }
 }

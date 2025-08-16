@@ -1,10 +1,24 @@
 class Tab {
+    id: number;
+    date: Date;
+    url: string;
+    title: string;
+    favicon: string;
+    pinned: boolean;
+
     constructor(
-        public readonly id: number,
-        public date: Date,
-        public url: string,
-        public title: string,
-        public favicon: string,
-        public pinned: boolean,
-    ) {}
+        id: number,
+        date: Date,
+        url: string,
+        title: string,
+        favicon: string,
+        pinned: boolean,
+    ) {
+        this.id = id;
+        this.date = date;
+        this.url = url;
+        this.title = title;
+        this.favicon = favicon;
+        this.pinned = pinned;
+    }
 }
