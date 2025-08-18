@@ -23,20 +23,41 @@ class Commit {
 }
 
 class CommitDiff {
-    added: Tab[];
-    removed: Tab[];
+    additions: Addition[];
+    deletions: Deletion[];
     constructor(
-        added: Tab[],
-        removed: number[], // Assuming these are ids of removed tabs
+        additions: Addition[],
+        deletions: Deletion[], // Assuming these are ids of removed tabs
     ) {
-        this.added = added;
-        this.removed = removed;
+        this.additions = additions;
+        this.deletions = deletions;
     }
 
-    public static myersDiff(original: Tab[], updated: Tab[]): CommitDiff {
+    public static diff(original: Tab[], updated: Tab[]): CommitDiff {
         // here, we will use the Myer's diff algorithm to compare the current state of tabs with the previous state
         
         return new CommitDiff(original, [1, 2]);
+    }
+}
+
+class Addition {
+    tab: Tab;
+    index: number;
+    constructor(
+        tab: Tab,
+        index: number,
+    ) {
+        this.tab = tab;
+        this.index = index;
+    }
+}
+
+class Deletion {
+    index: number;
+    constructor(
+        index: number,
+    ) {
+        this.index = index;
     }
 }
 
