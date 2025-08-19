@@ -22,7 +22,10 @@ class Commit {
     }
 }
 
+type Delta = Addition | Deletion;
+
 class CommitDiff {
+    // deltas
     additions: Addition[];
     deletions: Deletion[];
     constructor(
@@ -33,9 +36,20 @@ class CommitDiff {
         this.deletions = deletions;
     }
 
-    public static diff(original: Tab[], updated: Tab[]): CommitDiff {
+    public static diff(a: Tab[], b: Tab[]): CommitDiff {
         // here, we will use the Myer's diff algorithm to compare the current state of tabs with the previous state
-        
+        // algorithm based on https://blog.jcoglan.com/2017/02/15/the-myers-diff-algorithm-part-1/
+        let n: number = a.length;
+        let m: number = b.length;
+        let max: number = n + m;
+
+        let dp: number[] = new Array(2 * max + 1);
+        dp[1] = 0;
+        for (let i: number = 0; i < max; i += 2) {
+            for (let j: number = -i; j < i; j += 2) {
+
+            }
+        }
         return new CommitDiff(original, [1, 2]);
     }
 }
