@@ -66,7 +66,7 @@ class CommitDiff {
             for (let k: number = -d; k <= d; k += 2) {
                 let x, y, old_x, hist;
                 let go_down = k === -d || (k !== d && dp[k - 1] < dp[k + 1]);
-                if (go_down) { // go down
+                if (go_down) {
                     old_x = dp[k + 1];
                     hist = trace[k + 1];
                     x = old_x;
