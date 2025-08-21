@@ -89,7 +89,7 @@ class CommitDiff {
                     y++;
                 }
                 dp[k] = x;
-                if (x >= n && y >= m) {
+                if (x >= n && y >= m) { // at end of both arrays
                     return hist;
                 } else {
                     dp[k] = x;
