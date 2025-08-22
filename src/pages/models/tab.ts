@@ -1,4 +1,4 @@
-class Tab {
+export class Tab {
     id: number;
     date: Date;
     url: string;

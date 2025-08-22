@@ -1,30 +1,30 @@
 import {Tab} from './tab';
 
-class Commit {
+export class Commit {
     hash: string;
     author: string;
     date: Date;
     message: string;
-    diffs: string;
+    deltas: CommitDiff;
 
     constructor(
         hash: string,
         author: string,
         date: Date,
         message: string,
-        diffs: string,
+        deltas: CommitDiff,
     ) {
         this.hash = hash;
         this.author = author;
         this.date = date;
         this.message = message;
-        this.diffs = diffs;
+        this.deltas = deltas;
     }
 }
 
-type Delta = Addition | Deletion;
+export type Delta = Addition | Deletion;
 
-class CommitDiff {
+export class CommitDiff {
     // deltas
     additions: Addition[];
     deletions: Deletion[];
@@ -45,12 +45,47 @@ class CommitDiff {
         let moves = this.shortest_edit(a, b);
         moves.forEach((move) => {
             if (move instanceof Deletion) {
-                deletions.push(new Deletion(move.index));
+                deletions.push(move);
             } else if (move instanceof Addition) {
-                additions.push(new Addition(move, move.index));
+                additions.push(move);
             }
         });
         return new CommitDiff(additions, deletions);
+    }
+
+    public apply(to: Tab[]): Tab[] {
+        let tabs: Tab[] = [];
+
+        let ptr1 = 0; // ptr to additions array
+        let ptr2 = 0; // ptr to deletions array
+        let ptr3 = 0; // ptr to to array
+        while (ptr1 !== this.additions.length || ptr2 !== this.deletions.length || ptr3 !== to.length) {
+            let x: number = Infinity;
+            let y: number = Infinity;
+            let z: number = Infinity;
+            if (ptr1 < this.additions.length) {
+                x = this.additions[ptr1].index;
+            }
+            if (ptr2 < this.deletions.length) {
+                y = this.deletions[ptr2].index;
+            }
+            if (ptr3 < to.length) {
+                z = ptr3;
+            }
+            let min = Math.min(x, y, z);
+            if (min === x) {
+                tabs.push(this.additions[ptr1].tab);
+                ptr1++;
+            } else if (min === y) {
+                ptr3++; // skip tab
+                ptr2++;
+            } else {
+                tabs.push(to[ptr3]);
+                ptr3++;
+            }
+        }
+
+        return tabs;
     }
 
     private static shortest_edit(a: Tab[], b: Tab[]): Delta[] {
@@ -86,7 +121,7 @@ class CommitDiff {
                 }
                 while (x < n && y < m && a[x].url === b[y].url) { // not at the end of either array and the urls match
                     x++;
-                    y++;
+                    y++; // move accross the diagonal
                 }
                 dp[k] = x;
                 if (x >= n && y >= m) { // at end of both arrays
@@ -123,13 +158,13 @@ class Deletion {
 }
 
 class Snapshot {
-    commit: Commit;
+    commit: string; // string storing hash of commit
     tabs: Tab[];
     constructor(
         commit: Commit,
         tabs: Tab[],
     ) {
-        this.commit = commit;
+        this.commit = commit.hash;
         this.tabs = tabs;
     }
 
