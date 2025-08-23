@@ -88,6 +88,7 @@ export class CommitDiff {
         return tabs;
     }
 
+    // returns a list of additions and deletions to convert array a to array b. Note that the index of an addition could refer to a tab that has already been deleted. Hence, when applying the patch, we need to keep in mind that the order of the indices matters more than their absolute values.
     private static shortest_edit(a: Tab[], b: Tab[]): Delta[] {
         // this current implementation is based on the python code from https://gist.github.com/adamnew123456/37923cf53f51d6b9af32a539cdfa7cc4
         let n: number = a.length;
@@ -115,7 +116,7 @@ export class CommitDiff {
                 y = x - k;
 
                 if (1 <= y && y <= m && go_down) {
-                    hist.push(new Addition(b[y - 1], x-1));
+                    hist.push(new Addition(b[y - 1], x-1)); // beware that this tab could have already been deleted
                 } else if (1 <= x && x <= n) {
                     hist.push(new Deletion(x - 1));
                 }
