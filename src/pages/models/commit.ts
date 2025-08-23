@@ -94,13 +94,13 @@ export class CommitDiff {
         let m: number = b.length;
         let max: number = n + m;
 
-        let dp: number[] = new Array(2 * max + 1).fill(0);
+        let dp: number[] = new Array(2 * max + 1);
         dp[max + 1] = 0; // offset for dp array, since k can be negative
         let trace: Delta[][] = dp.map((_) => []);
         let last_match: number = -1;
         for (let d: number = 0; d <= max; d++) {
             for (let k: number = -d; k <= d; k += 2) {
-                let idx = k; // offset for dp array, since k can be negative
+                let idx = k + max; // offset for dp array, since k can be negative
                 let l = idx - 1; // offset for dp array
                 let r = idx + 1;
                 let x, y, old_x, hist;

@@ -99,3 +99,31 @@ test('multiple deletions + insertion: catches off-by-diagonal/add-after bugs', (
 
   expect(applied.map(t => t.url)).toEqual(b.map(t => t.url));
 });
+
+// Force inner loop to see k = -1 (max = 1)
+test('inserting into empty original (forces k negative)', () => {
+  const a: Tab[] = [];
+  const b: Tab[] = [{ url: 'x' } as Tab];
+
+  // Expect one addition at the very start: after = -1 (insert before any original)
+  expect(CommitDiff.diff(a, b)).toEqual(
+    expect.objectContaining({
+      additions: [new Addition({ url: 'x' } as Tab, -1)],
+      deletions: []
+    })
+  );
+});
+
+// Replace single element: deletion + insertion at start (also forces k = -1)
+test('replace single element (delete 0 + add at start) — exercises negative k', () => {
+  const a: Tab[] = [{ url: 'a' } as Tab];
+  const b: Tab[] = [{ url: 'b' } as Tab];
+
+  // One deletion at index 0, and one addition inserted at start (after = -1)
+  expect(CommitDiff.diff(a, b)).toEqual(
+    expect.objectContaining({
+      additions: [new Addition({ url: 'b' } as Tab, -1)],
+      deletions: [new Deletion(0)]
+    })
+  );
+});
