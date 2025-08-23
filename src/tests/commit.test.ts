@@ -76,3 +76,26 @@ test('applies patch correctly with interleaved changes', () => {
     );
     expect(delta.apply(a)).toEqual(b);
 });
+
+test('multiple deletions + insertion: catches off-by-diagonal/add-after bugs', () => {
+  const a: Tab[] = [
+    { url: 'k1' }, // 0
+    { url: 'x'  }, // 1 -> deleted
+    { url: 'k2' }, // 2 (we will insert after this original index)
+    { url: 'k3' }, // 3
+    { url: 'y'  }, // 4 -> deleted
+    { url: 'k4' }  // 5
+  ] as Tab[];
+  const b: Tab[] = [
+    { url: 'k1' },
+    { url: 'k2' },
+    { url: 'ins1' }, // inserted after original index 2
+    { url: 'k3' },
+    { url: 'k4' }
+  ] as Tab[];
+
+  const diff = CommitDiff.diff(a, b);
+  const applied = diff.apply(a);
+
+  expect(applied.map(t => t.url)).toEqual(b.map(t => t.url));
+});
