@@ -64,7 +64,7 @@ export class CommitDiff {
             let y: number = Infinity;
             let z: number = Infinity;
             if (ptr1 < this.additions.length) {
-                x = this.additions[ptr1].index;
+                x = this.additions[ptr1].after;
             }
             if (ptr2 < this.deletions.length) {
                 y = this.deletions[ptr2].index;
@@ -96,40 +96,44 @@ export class CommitDiff {
         let max: number = n + m;
 
         let dp: number[] = new Array(2 * max + 1).fill(0);
-        dp[1] = 0;
+        dp[max + 1] = 0;
         let trace: Delta[][] = dp.map((_) => []);
+        let last_match: number = -1;
         for (let d: number = 0; d <= max; d++) {
             for (let k: number = -d; k <= d; k += 2) {
+                let idx = k + max; // offset for dp array
+                let l = idx - 1; // offset for dp array
+                let r = idx + 1;
                 let x, y, old_x, hist;
-                let go_down = k === -d || (k !== d && dp[k - 1] < dp[k + 1]);
+                let go_down = k === -d || (k !== d && dp[l] < dp[r]);
                 if (go_down) {
-                    old_x = dp[k + 1];
-                    hist = trace[k + 1];
+                    old_x = dp[r];
+                    hist = trace[r];
                     x = old_x;
                 } else {
-                    old_x = dp[k - 1];
-                    x = dp[k - 1] + 1;
-                    hist = trace[k - 1];
+                    old_x = dp[l];
+                    x = old_x + 1;
+                    hist = trace[l];
                 }
 
                 hist = [...hist]; // copy
                 y = x - k;
 
                 if (1 <= y && y <= m && go_down) {
-                    hist.push(new Addition(b[y - 1], x-1)); // beware that this tab could have already been deleted
+                    hist.push(new Addition(b[y - 1], last_match)); // x - deletions, since we want to add after the last undeleted tab (just to keep things clean)
                 } else if (1 <= x && x <= n) {
                     hist.push(new Deletion(x - 1));
+                } else { // keep
                 }
                 while (x < n && y < m && a[x].url === b[y].url) { // not at the end of either array and the urls match
+                    last_match = x; // update last match
                     x++;
                     y++; // move accross the diagonal
                 }
-                dp[k] = x;
+                    dp[idx] = x;
+                    trace[idx] = hist;
                 if (x >= n && y >= m) { // at end of both arrays
                     return hist;
-                } else {
-                    dp[k] = x;
-                    trace[k] = hist;
                 }
             }
         }
@@ -139,13 +143,13 @@ export class CommitDiff {
 
 export class Addition {
     tab: Tab;
-    index: number;
+    after: number;
     constructor(
         tab: Tab,
         index: number,
     ) {
         this.tab = tab;
-        this.index = index;
+        this.after = index;
     }
 }
 

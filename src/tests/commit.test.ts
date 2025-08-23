@@ -41,7 +41,7 @@ test('returns correct delta with multiple changes on two different tab arrays', 
     let b: Tab[] = [{url: "c"} as Tab, {url: "d"} as Tab];
     expect(CommitDiff.diff(a, b)).toEqual(expect.objectContaining(
         {
-            "additions": [new Addition({"url": "c"} as Tab, 1), new Addition({"url": "d"} as Tab, 1)],
+            "additions": [new Addition({"url": "c"} as Tab, -1), new Addition({"url": "d"} as Tab, -1)],
             "deletions": [new Deletion(0), new Deletion(1)]
         })
     );
