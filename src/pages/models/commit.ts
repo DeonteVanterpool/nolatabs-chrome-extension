@@ -73,15 +73,15 @@ export class CommitDiff {
                 z = ptr3;
             }
             let min = Math.min(x, y, z);
-            if (min === x) {
-                tabs.push(this.additions[ptr1].tab);
-                ptr1++;
-            } else if (min === y) {
-                ptr3++; // skip tab
+            if (min === y) { // deletion
+                ptr3++; // skip tab in `to` array
                 ptr2++;
-            } else {
+            } else if (min === z) { // keep (should have priority over addition, since addition adds a tab *after* the current index in the `to` array)
                 tabs.push(to[ptr3]);
                 ptr3++;
+            } else {
+                tabs.push(this.additions[ptr1].tab);
+                ptr1++;
             }
         }
 
@@ -136,7 +136,7 @@ export class CommitDiff {
     }
 }
 
-class Addition {
+export class Addition {
     tab: Tab;
     index: number;
     constructor(
@@ -148,7 +148,7 @@ class Addition {
     }
 }
 
-class Deletion {
+export class Deletion {
     index: number;
     constructor(
         index: number,
