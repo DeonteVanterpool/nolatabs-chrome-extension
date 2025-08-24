@@ -161,25 +161,25 @@ export class Deletion {
     }
 }
 
-class Snapshot {
+export class Snapshot {
     commit: string; // string storing hash of commit
     tabs: Tab[];
     constructor(
-        commit: Commit,
+        head: Commit,
         tabs: Tab[],
     ) {
-        this.commit = commit.hash;
+        this.commit = head.hash;
         this.tabs = tabs;
     }
 
     static fromCommits(
-        commit: [Commit],
+        commits: Commit[],
     ): Snapshot {
-        const tabs: Tab[] = [];
-        commit.forEach((c) => {
-
-        });
-        return new Snapshot(commit[0], tabs);
+        let tabs = commits[0].deltas.apply([]);
+        commits.forEach((commit) => {
+            tabs = commit.deltas.apply(tabs);
+        })
+        return new Snapshot(commits[0], tabs);
     }
 }
 
