@@ -1,24 +1,52 @@
 import {Tab} from './tab';
 
+let commits = new Map<string, Commit>();
+
 export class Commit {
     hash: string;
     author: string;
     date: Date;
     message: string;
     deltas: CommitDiff;
+    parent: string | null = null; // hash of parent commit, null if no parent (initial commit)
 
     constructor(
         hash: string,
         author: string,
         date: Date,
         message: string,
-        deltas: CommitDiff,
+        tabs: Tab[],
+        base: Commit | null,
     ) {
         this.hash = hash;
         this.author = author;
         this.date = date;
         this.message = message;
-        this.deltas = deltas;
+        this.parent = base ? base.hash : null; // if no base, this is the initial commit
+        this.deltas = base ? CommitDiff.diff(base.getSnapshot(), tabs) : new CommitDiff(tabs.map((tab) => {
+            return new Addition(tab, -1);
+        }), []);
+    }
+
+    public getSnapshot(): Tab[] {
+        if (this.parent) {
+            let parentCommit = Commit.get(this.parent);
+            if (parentCommit) {
+                let parentSnapshot = parentCommit.getSnapshot();
+                return this.deltas.apply(parentSnapshot);
+            } else {
+                throw new Error(`Parent commit ${this.parent} not found`);
+            }
+        } else {
+            return this.deltas.apply([]);
+        }
+    }
+
+    public static get(hash: string): Commit | null {
+        if (commits.has(hash)) {
+            return commits.get(hash)!;
+        }
+        return null;
     }
 }
 
