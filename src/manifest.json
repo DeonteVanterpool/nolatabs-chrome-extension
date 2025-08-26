@@ -40,7 +40,7 @@
         }
     ],
     "commands": {
-        "nolatabs-command-pallete": {
+        "command-pallete": {
             "suggested_key": {
                 "default": "Ctrl+Shift+Y",
                 "mac": "Command+Shift+Y"
