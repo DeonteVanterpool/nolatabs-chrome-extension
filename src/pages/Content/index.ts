@@ -10,7 +10,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         if (!displayPallete) {
             document.body.insertAdjacentHTML('beforeend', `
 <div id="nolatabs-overlay" style="width: 100vw; height: 100vh; position: fixed; top: 0; left: 0; z-index: 999; display: flex; justify-content: center; align-items: top; background: transparent; border: 0;">
-<iframe id="nolatabs-iframe" style="border: 1px solid grey; background: white; padding: 10px; height: 5em; width: 500px; z-index=999999; margin-top: 30vh;" srcdoc="<body style='margin: 0;'><label style='background: white; display: block; width: 100%;'>Nolatabs Command Pallete
+<iframe id="nolatabs-iframe" style="border: 1px solid grey; background: white; padding: 10px; height: 5em; width: 500px; z-index=999999; margin-top: 30vh;" srcdoc="<body style='margin: 0;'>
+<label style='background: white; display: block; width: 100%;'>Nolatabs Command Pallete
 <input type='text' name='Nolatabs Command Pallete' id='nolatabs-command-pallete' style='display: block; border: 2px solid black; border-radius: 2px; outline: none; width: 100%; box-sizing: border-box; height: 2em; padding: 0;' autofocus/>
 </label>
 </div></body>"

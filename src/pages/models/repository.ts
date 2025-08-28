@@ -1,17 +1,17 @@
 import { Commit } from './commit';
 
-class Repo {
+export class Repository {
     id: number;
     name: string;
-    commits: Commit[];
+    head: Commit;
 
-    constructor(
+    public constructor(
        id: number,
        name: string,
-       commits: Commit[],
+       head: Commit,
     ) {
         this.id = id;
         this.name = name;
-        this.commits = commits;
+        this.head = head;
     }
 }

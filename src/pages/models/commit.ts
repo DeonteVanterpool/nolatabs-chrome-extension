@@ -9,16 +9,16 @@ export class Commit {
     message: string;
     deltas: CommitDiff;
     parent: string | null = null; // hash of parent commit, null if no parent (initial commit)
+    children: string[]; // hashes of child commits
 
     constructor(
-        hash: string,
         author: string,
         date: Date,
         message: string,
         tabs: Tab[],
         base: Commit | null,
     ) {
-        this.hash = hash;
+        this.hash = crypto.createHash('sha1');
         this.author = author;
         this.date = date;
         this.message = message;
@@ -26,6 +26,10 @@ export class Commit {
         this.deltas = base ? CommitDiff.diff(base.getSnapshot(), tabs) : new CommitDiff(tabs.map((tab) => {
             return new Addition(tab, -1);
         }), []);
+        this.children = [];
+        if (base) {
+            base.children.push(this.hash);
+        }
     }
 
     public getSnapshot(): Tab[] {

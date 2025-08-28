@@ -58,6 +58,6 @@
         }
     },
     "permissions": [
-    "offscreen"
-      ]
+        "storage"
+    ]
 }
