@@ -1,8 +1,8 @@
 import { Commit, CommitDiff } from '../models/commit';
 import { Repository } from '../models/repository';
 
-export const validRepoOwner = new RegExp("[A-Za-z@.-]+");
-export const validRepoName = new RegExp("[A-Za-z/#@.-]+");
+export const validRepoOwner = new RegExp("^[A-Za-z@.-]+$");
+export const validRepoName = new RegExp("^[A-Za-z/#@.-]+$");
 
 export interface ICommitRepository { }
 
