@@ -9,7 +9,7 @@ export interface ICommitRepository { }
 class CommitStorage {
     hash: string;
     author: string;
-    timestamp: Date;
+    timestamp: number;
     message: string;
     deltas: CommitDiff;
     base: string | null = null;
@@ -25,7 +25,7 @@ class CommitStorage {
         this.repo = { owner: repo.owner, name: repo.name };
         this.hash = commit.hash;
         this.author = commit.author;
-        this.timestamp = commit.timestamp;
+        this.timestamp = commit.timestamp.getMilliseconds();
         this.message = commit.message;
         this.deltas = commit.deltas;
         this.base = commit.base;
@@ -36,7 +36,7 @@ class CommitStorage {
         return {
             author: this.author,
             hash: this.hash,
-            timestamp: this.timestamp,
+            timestamp: new Date(this.timestamp),
             message: this.message,
             deltas: this.deltas,
             base: this.base,
@@ -54,7 +54,7 @@ export class CommitRepository {
     }
 
     public async init(repo: Repository) {
-        let commits: CommitStorage[] = await this.storage.get("commits") as CommitStorage[];
+        let commits: CommitStorage[] = await this.storage.get("commits") as CommitStorage[]; // worst case scenario, we can start paginating these commits
         commits.filter((commit) => commit.repo.name === repo.name && commit.repo.owner === repo.owner ).forEach((commit) => this.commits.set(commit.hash, commit.toCommit()));
     }
 
