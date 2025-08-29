@@ -1,17 +1,19 @@
 import { Commit } from './commit';
 
 export class Repository {
-    id: number;
     name: string;
-    head: Commit;
+    head: string;
+    owner: string;
 
     public constructor(
        id: number,
        name: string,
-       head: Commit,
+       head: string,
+       owner: string,
     ) {
         this.id = id;
         this.name = name;
         this.head = head;
+        this.owner = owner;
     }
 }

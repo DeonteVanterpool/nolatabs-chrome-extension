@@ -5,10 +5,10 @@ let commits = new Map<string, Commit>();
 export class Commit {
     hash: string;
     author: string;
-    date: Date;
+    timestamp: Date;
     message: string;
     deltas: CommitDiff;
-    parent: string | null = null; // hash of parent commit, null if no parent (initial commit)
+    base: string | null = null; // hash of parent commit, null if no parent (initial commit)
     children: string[]; // hashes of child commits
 
     constructor(
@@ -20,9 +20,9 @@ export class Commit {
     ) {
         this.hash = crypto.createHash('sha1');
         this.author = author;
-        this.date = date;
+        this.timestamp = date;
         this.message = message;
-        this.parent = base ? base.hash : null; // if no base, this is the initial commit
+        this.base = base ? base.hash : null; // if no base, this is the initial commit
         this.deltas = base ? CommitDiff.diff(base.getSnapshot(), tabs) : new CommitDiff(tabs.map((tab) => {
             return new Addition(tab, -1);
         }), []);
@@ -33,13 +33,13 @@ export class Commit {
     }
 
     public getSnapshot(): Tab[] {
-        if (this.parent) {
-            let parentCommit = Commit.get(this.parent);
+        if (this.base) {
+            let parentCommit = Commit.get(this.base);
             if (parentCommit) {
                 let parentSnapshot = parentCommit.getSnapshot();
                 return this.deltas.apply(parentSnapshot);
             } else {
-                throw new Error(`Parent commit ${this.parent} not found`);
+                throw new Error(`Parent commit ${this.base} not found`);
             }
         } else {
             return this.deltas.apply([]);
