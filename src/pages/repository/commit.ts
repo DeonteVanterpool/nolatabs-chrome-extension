@@ -47,7 +47,7 @@ class CommitStorage {
 
 export class CommitRepository {
     storage: chrome.storage.StorageArea;
-    commits: Map<String, Commit>;
+    commits: Map<string, Commit>;
     public constructor(storage: chrome.storage.StorageArea) {
         this.storage = storage;
         this.commits = new Map();
