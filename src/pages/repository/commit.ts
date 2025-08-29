@@ -17,9 +17,9 @@ class CommitStorage {
     repo: { owner: string, name: string }
 
     public constructor(commit: Commit, repo: Repository) {
-        if (!validRepoOwner.exec(repo.owner)) {
+        if (!validRepoOwner.test(repo.owner)) {
             throw Error("Invalid owner name / email");
-        } else if (!validRepoName.exec(repo.name)) {
+        } else if (!validRepoName.test(repo.name)) {
             throw Error("Invalid name for a repo");
         }
         this.repo = { owner: repo.owner, name: repo.name };
