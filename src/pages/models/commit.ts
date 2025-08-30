@@ -9,7 +9,6 @@ export class Commit {
     message: string;
     deltas: CommitDiff;
     base: string | null = null; // hash of parent commit, null if no parent (initial commit)
-    children: string[]; // hashes of child commits
 
     constructor(
         author: string,
@@ -26,10 +25,6 @@ export class Commit {
         this.deltas = base ? CommitDiff.diff(base.getSnapshot(), tabs) : new CommitDiff(tabs.map((tab) => {
             return new Addition(tab, -1);
         }), []);
-        this.children = [];
-        if (base) {
-            base.children.push(this.hash);
-        }
     }
 
     public getSnapshot(): Tab[] {
