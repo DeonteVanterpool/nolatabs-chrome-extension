@@ -12,7 +12,7 @@ Commit {
 
 This is the structure of a commit as of `2025-08-30`. You maybe wondering why we don't store the children of each commit. It isn't uncommon to want to move forward in commit history. For example, building snapshots requires you to go from the root, and continually move forward while applying deltas to the current commit's state. Storing children seems like it would help with that, but this (mostly) an illusion.
 
-![Image of Incorrect Snapshot Building Dillemma]
+![Image of Incorrect Snapshot Building Dilemma](https://github.com/DeonteVanterpool/nolatabs-chrome-extension/blob/main/documentation/assets/buildingSnapshots.jpg?raw=true)
 
 #### Problem 1
 The first problem is that commit history is a graph, and not a line. "Backwards" exists if we store the parents, since the graph is directional and flows one way (toward the root). However, "forwards" doesn't theoretically exist, since there are multiple paths away from the initial commit. This means that you can't theoretically go backwards to the initial commit, then build the snapshots without doing one of the following options:
