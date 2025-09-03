@@ -1,6 +1,6 @@
 import {Tab} from './tab';
 
-let commits = new Map<string, Commit>();
+export let commits = new Map<string, Commit>();
 
 export class Commit {
     hash: string;
@@ -8,33 +8,132 @@ export class Commit {
     timestamp: Date;
     message: string;
     deltas: CommitDiff;
-    base: string | null = null; // hash of parent commit, null if no parent (initial commit)
+    parents: string[]; // hash of parent commit, null if no parent (initial commit)
 
     constructor(
+        hash: string,
         author: string,
-        date: Date,
+        timestamp: Date,
         message: string,
         tabs: Tab[],
-        base: Commit | null,
+        parents: string[]
     ) {
-        this.hash = crypto.createHash('sha1');
+        this.hash = hash;
+        commits.set(this.hash, this);
+        this.parents = parents;
         this.author = author;
-        this.timestamp = date;
+        this.timestamp = timestamp;
         this.message = message;
-        this.base = base ? base.hash : null; // if no base, this is the initial commit
-        this.deltas = base ? CommitDiff.diff(base.getSnapshot(), tabs) : new CommitDiff(tabs.map((tab) => {
-            return new Addition(tab, -1);
-        }), []);
+        if (this.parents.length === 1) {
+            let parentCommit = Commit.get(this.parents[0]);
+            if (parentCommit) {
+                let parentSnapshot = parentCommit.getSnapshot();
+                this.deltas = CommitDiff.diff(parentSnapshot, tabs);
+            } else {
+                throw new Error(`Parent commit ${commits.get(this.parents[0])?.message} not found`);
+            }
+        } else if (this.parents.length === 0) {
+            this.deltas = new CommitDiff(tabs.map((tab, index) => new Addition(tab, -1)), []);
+        } else {
+            // merge commit
+            let additions: Addition[] = [];
+            let deletions: Deletion[] = [];
+            for (let parentHash of this.parents) {
+                let parentCommit = Commit.get(parentHash);
+                if (!parentCommit) {
+                    throw new Error(`Parent commit ${parentHash} not found`);
+                }
+                let commonAncestorHash = Commit.getCommonAncestor(Commit.get(this.parents[0])!, Commit.get(this.parents[1])!);
+                if (!commonAncestorHash) {
+                    throw new Error(`No common ancestor found between commits ${commits.get(this.parents[0])?.message} and ${commits.get(this.parents[1])?.message}`); // should never happen in a properly formed DAG
+                }
+                let commonAncestorCommit = Commit.get(commonAncestorHash);
+                if (!commonAncestorCommit) {
+                    throw new Error(`Common ancestor commit ${commonAncestorHash} not found`);
+                }
+                let ancestorSnapshot = commonAncestorCommit.getSnapshot();
+                let parentSnapshot = parentCommit.getSnapshot();
+                let deltaFromAncestorToParent = CommitDiff.diff(ancestorSnapshot, parentSnapshot);
+                additions = additions.concat(deltaFromAncestorToParent.additions);
+                deletions = deletions.concat(deltaFromAncestorToParent.deletions);
+            }
+            this.deltas = new CommitDiff(additions, deletions);
+        }
+    }
+
+    public static async init(
+        author: string,
+        timestamp: Date,
+        message: string,
+        tabs: Tab[],
+        parents: Commit[]
+    ): Promise<Commit> {
+        let parentHashes = parents.map((c) => c.hash);
+        let buffer = new TextEncoder().encode(author + timestamp + tabs + parents.reduce((accum, commit) => accum + commit.hash, ""));
+        let hash = new TextDecoder().decode(await crypto.subtle.digest("SHA-1", buffer));
+        return new Commit(hash, author, timestamp, message, tabs, parentHashes);
+    }
+
+    // Returns the lowest common ancestor between two commits. If there is none, this method returns undefined
+    public static getCommonAncestor(a: Commit, b: Commit): string | undefined {
+        let v1: Set<string> = new Set();
+        let v2: Set<string> = new Set();
+        let q1: string[] = [a.hash]; // we should switch to a proper Dequeue here if performance becomes a problem
+        let q2: string[] = [b.hash];
+        // bfs
+        while (q1.length !== 0 && q2.length !== 0) {
+            let c1 = commits.get(q1.shift() as string) as Commit;
+            let c2 = commits.get(q2.shift() as string) as Commit;
+
+            for (const p of c1.parents) {
+                if (v2.has(p)) {
+                    return p;
+                }
+                // this is a Direct Acyclic Graph (DAG). No need to check for cycles
+                v1.add(p);
+                q1.push(p);
+            }
+
+            for (const p of c2.parents) {
+                if (v1.has(p)) {
+                    return p;
+                }
+                v2.add(p);
+                q2.push(p);
+            }
+        }
+        let q: string[] = [];
+        let v: Set<string>;
+        if (q1.length !== 0) {
+            q = q1;
+            v = v2;
+        } else if (q2.length !== 0) {
+            q = q2
+            v = v1;
+        } else {
+            throw new Error("both q1 and q2 still have elements");
+        }
+        while (q.length !== 0) {
+            let c = commits.get(q.shift() as string) as Commit;
+
+            for (const p of c.parents) {
+                if (v.has(p)) {
+                    return p;
+                }
+                q.push(p);
+            }
+        }
+        return undefined;
     }
 
     public getSnapshot(): Tab[] {
-        if (this.base) {
-            let parentCommit = Commit.get(this.base);
+        if (this.parents.length === 1) {
+            let parentCommit = Commit.get(this.parents[0]);
             if (parentCommit) {
                 let parentSnapshot = parentCommit.getSnapshot();
                 return this.deltas.apply(parentSnapshot);
             } else {
-                throw new Error(`Parent commit ${this.base} not found`);
+                throw new Error(`Parent commit ${this.parents[0]} not found`);
             }
         } else {
             return this.deltas.apply([]);

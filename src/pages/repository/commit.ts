@@ -12,7 +12,7 @@ class CommitStorage {
     timestamp: number;
     message: string;
     deltas: CommitDiff;
-    base: string | null = null;
+    parents: string[];
     repo: { owner: string, name: string }
 
     public constructor(commit: Commit, repo: Repository) {
@@ -27,7 +27,7 @@ class CommitStorage {
         this.timestamp = commit.timestamp.getTime();
         this.message = commit.message;
         this.deltas = commit.deltas;
-        this.base = commit.base;
+        this.parents = commit.parents;
     }
 
     public toCommit(): Commit {
@@ -37,7 +37,7 @@ class CommitStorage {
             timestamp: new Date(this.timestamp),
             message: this.message,
             deltas: this.deltas,
-            base: this.base,
+            parents: this.parents,
         } as Commit;
     }
 }
@@ -84,13 +84,13 @@ export class CommitRepository {
 
     public async add(commit: Commit) {
         this.commits.set(commit.hash, commit);
-        if (!commit.base) {
+        if (commit.parents.length == 0) {
             await this.sync();
             return;
         }
-        let base = this.commits.get(commit.base);
+        let base = this.commits.get(commit.parents[0]); // TODO: loop through parents
         if (!base) {
-            throw new Error("Base " + commit.base + " does not exist in repo" + this.repo)
+            throw new Error("Base " + commit.parents[0] + " does not exist in repo" + this.repo)
         }
         this.commits.set(base.hash, base);
         await this.sync();
