@@ -1,5 +1,6 @@
 import {Tab} from '../pages/models/tab';
 import {CommitDiff, Addition, Deletion} from '../pages/models/commit';
+import {Commit, commits} from '../pages/models/commit';
 
 test('return 0 deltas on equivalent tab arrays 1', () => {
     let a: Tab[] = [{url: "a"} as Tab];
@@ -127,3 +128,24 @@ test('replace single element (delete 0 + add at start) — exercises negative k'
     })
   );
 });
+
+describe('commonAncestor', () => {
+    test('get common ancestor of merge commit', async () => {
+        //      A
+        //     / \
+        //    B   C
+        //     \ /
+        //      D
+
+        let A = await Commit.init("a", new Date(), "A", [{url: "a"} as Tab], []);
+        commits.set(A.hash, A);
+        let B = await Commit.init("b", new Date(), "B", [{url: "a"} as Tab, {url: "b"} as Tab], [A]);
+        commits.set(B.hash, B);
+        let C = await Commit.init("c", new Date(), "C", [{url: "a"} as Tab, {url: "c"} as Tab], [A]);
+        commits.set(C.hash, C);
+        let D = await Commit.init("d", new Date(), "D", [{url: "a"} as Tab, {url: "b"} as Tab, {url: "c"} as Tab], [B, C]);
+        commits.set(D.hash, D);
+        expect(Commit.getCommonAncestor(B, C)).toBe(A.hash);
+    })
+});
+
