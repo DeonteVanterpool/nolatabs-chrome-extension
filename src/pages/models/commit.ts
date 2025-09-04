@@ -44,7 +44,7 @@ export class Commit {
                 let parentCommit = Commit.get(parentHash);
                 let commonAncestorHash = Commit.getCommonAncestor(currCommit!, parentCommit!);
                 if (!commonAncestorHash) {
-                    throw new Error(`No common ancestor found between commits ${commits.get(this.parents[0])?.message} and ${commits.get(this.parents[1])?.message}`); // should never happen in a properly formed DAG
+                    throw new Error(`No common ancestor found between commits ${currCommit!.message} and ${parentCommit!.message}`); // should never happen in a properly formed DAG
                 }
                 let commonAncestorCommit = Commit.get(commonAncestorHash);
                 if (!commonAncestorCommit) {
