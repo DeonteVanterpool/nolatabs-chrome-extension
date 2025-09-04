@@ -38,12 +38,11 @@ export class Commit {
             // merge commit
             let additions: Addition[] = [];
             let deletions: Deletion[] = [];
-            for (let parentHash of this.parents) {
+            let currHash = this.parents[0];
+            for (let parentHash of this.parents.slice(1, this.parents.length)) {
+                let currCommit = Commit.get(currHash);
                 let parentCommit = Commit.get(parentHash);
-                if (!parentCommit) {
-                    throw new Error(`Parent commit ${parentHash} not found`);
-                }
-                let commonAncestorHash = Commit.getCommonAncestor(Commit.get(this.parents[0])!, Commit.get(this.parents[1])!);
+                let commonAncestorHash = Commit.getCommonAncestor(currCommit!, parentCommit!);
                 if (!commonAncestorHash) {
                     throw new Error(`No common ancestor found between commits ${commits.get(this.parents[0])?.message} and ${commits.get(this.parents[1])?.message}`); // should never happen in a properly formed DAG
                 }
@@ -52,8 +51,10 @@ export class Commit {
                     throw new Error(`Common ancestor commit ${commonAncestorHash} not found`);
                 }
                 let ancestorSnapshot = commonAncestorCommit.getSnapshot();
-                let parentSnapshot = parentCommit.getSnapshot();
+                let parentSnapshot = parentCommit!.getSnapshot();
                 let deltaFromAncestorToParent = CommitDiff.diff(ancestorSnapshot, parentSnapshot);
+                
+                // concatentate all the changes
                 additions = additions.concat(deltaFromAncestorToParent.additions);
                 deletions = deletions.concat(deltaFromAncestorToParent.deletions);
             }
