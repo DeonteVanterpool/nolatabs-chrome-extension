@@ -15,8 +15,12 @@ export class Crypto {
         throw Error("Unimplemented!");
     }
 
-    public sha1(text: string): string {
+    public sha1Hash(text: string): string {
         throw Error("Unimplemented!");
+    }
+    
+    public sha1Verify(input: string, hash: string): boolean {
+        return this.sha1Hash(input) === hash;
     }
 }
 
