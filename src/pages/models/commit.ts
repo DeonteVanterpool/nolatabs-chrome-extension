@@ -42,13 +42,13 @@ export class Commit {
             for (let parentHash of this.parents.slice(1, this.parents.length)) {
                 let currCommit = Commit.get(currHash);
                 let parentCommit = Commit.get(parentHash);
-                let commonAncestorHash = Commit.getCommonAncestor(currCommit!, parentCommit!);
-                if (!commonAncestorHash) {
+                currHash = Commit.getCommonAncestor(currCommit!, parentCommit!)!;
+                if (!currHash) {
                     throw new Error(`No common ancestor found between commits ${currCommit!.message} and ${parentCommit!.message}`); // should never happen in a properly formed DAG
                 }
-                let commonAncestorCommit = Commit.get(commonAncestorHash);
+                let commonAncestorCommit = Commit.get(currHash);
                 if (!commonAncestorCommit) {
-                    throw new Error(`Common ancestor commit ${commonAncestorHash} not found`);
+                    throw new Error(`Common ancestor commit ${currHash} not found`);
                 }
                 let ancestorSnapshot = commonAncestorCommit.getSnapshot();
                 let parentSnapshot = parentCommit!.getSnapshot();
