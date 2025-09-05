@@ -2,6 +2,39 @@ import {Tab} from './tab';
 
 export let commits = new Map<string, Commit>();
 
+class hashInput {
+    author: string;
+    message: string;
+    timestamp: Date;
+    tabs: Tab[];
+    parentHashes: string[];
+
+    constructor(
+        author: string,
+        message: string,
+        timestamp: Date,
+        tabs: Tab[],
+        parentHashes: string[],
+    ) {
+        this.author = author;
+        this.message = message;
+        this.timestamp = timestamp;
+        this.tabs = tabs;
+        this.parentHashes = parentHashes;
+    }
+
+    // converts tabs into something that can be used by the hashing algo
+    private tabsToTree(tabs: Tab[]): string[] {
+        return tabs.map((t) => {
+            return "url " + t.url + "pinned " + t.pinned;
+        });
+    }
+
+    public stringify(): string {
+        return "author " + this.author + "\nmessage " + this.message + "\ntimestamp " + this.timestamp.getTime() + "\ntabs " + this.tabsToTree(this.tabs) + "\nparents " + this.parentHashes.sort().join(" ");
+    }
+}
+
 export class Commit {
     hash: string;
     author: string;
@@ -53,7 +86,7 @@ export class Commit {
                 let ancestorSnapshot = commonAncestorCommit.getSnapshot();
                 let parentSnapshot = parentCommit!.getSnapshot();
                 let deltaFromAncestorToParent = CommitDiff.diff(ancestorSnapshot, parentSnapshot);
-                
+
                 // concatentate all the changes
                 additions = additions.concat(deltaFromAncestorToParent.additions);
                 deletions = deletions.concat(deltaFromAncestorToParent.deletions);
@@ -70,8 +103,9 @@ export class Commit {
         parents: Commit[]
     ): Promise<Commit> {
         let parentHashes = parents.map((c) => c.hash);
+        let jsonInput = {author: author, timestamp: timestamp, tabs: tabs, parentHashes: parents.reduce((accum, commit) => accum + commit.hash, "")};
         let buffer = new TextEncoder().encode(author + timestamp + tabs + parents.reduce((accum, commit) => accum + commit.hash, ""));
-        let hash = new TextDecoder().decode(await crypto.subtle.digest("SHA-1", buffer));
+        let hash = new TextDecoder().decode(await crypto.subtle.digest("SHA-256", buffer));
         return new Commit(hash, author, timestamp, message, tabs, parentHashes);
     }
 
