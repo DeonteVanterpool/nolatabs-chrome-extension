@@ -71,7 +71,7 @@ export class Commit {
                 throw new Error(`Parent commit ${commits.get(this.parents[0])?.message} not found`);
             }
         } else if (this.parents.length === 0) {
-            this.deltas = new CommitDiff(tabs.map((tab, index) => new Addition(tab, -1)), []);
+            this.deltas = new CommitDiff(tabs.map((tab, _) => new Addition(tab, -1)), []);
         } else {
             // merge commit
             let additions: Addition[] = [];
