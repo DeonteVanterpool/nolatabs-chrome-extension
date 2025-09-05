@@ -1,10 +1,14 @@
 export class Crypto {
     privateKey: string;
     publicKey: string;
+    encoder: TextEncoder;
+    decoder: TextDecoder;
 
     constructor() {
         this.privateKey = "";
         this.publicKey = "";
+        this.encoder = new TextEncoder();
+        this.decoder = new TextDecoder();
     }
 
     public encrypt(text: string): string {
@@ -15,12 +19,12 @@ export class Crypto {
         throw Error("Unimplemented!");
     }
 
-    public sha1Hash(text: string): string {
-        throw Error("Unimplemented!");
+    public async sha2Hash(text: string): Promise<string> {
+        return this.decoder.decode(await crypto.subtle.digest("SHA-256", this.encoder.encode(text)));
     }
     
-    public sha1Verify(input: string, hash: string): boolean {
-        return this.sha1Hash(input) === hash;
+    public async sha2Verify(input: string, hash: string): Promise<boolean> {
+        return await this.sha2Hash(input) === hash;
     }
 }
 

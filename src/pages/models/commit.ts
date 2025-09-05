@@ -1,8 +1,9 @@
 import {Tab} from './tab';
+import {Crypto} from './crypto';
 
 export let commits = new Map<string, Commit>();
 
-class hashInput {
+class HashInput {
     author: string;
     message: string;
     timestamp: Date;
@@ -32,6 +33,10 @@ class hashInput {
 
     public stringify(): string {
         return "author " + this.author + "\nmessage " + this.message + "\ntimestamp " + this.timestamp.getTime() + "\ntabs " + this.tabsToTree(this.tabs) + "\nparents " + this.parentHashes.sort().join(" ");
+    }
+
+    public encode(): Uint8Array {
+        return new TextEncoder().encode(this.stringify());
     }
 }
 
@@ -103,9 +108,8 @@ export class Commit {
         parents: Commit[]
     ): Promise<Commit> {
         let parentHashes = parents.map((c) => c.hash);
-        let jsonInput = {author: author, timestamp: timestamp, tabs: tabs, parentHashes: parents.reduce((accum, commit) => accum + commit.hash, "")};
-        let buffer = new TextEncoder().encode(author + timestamp + tabs + parents.reduce((accum, commit) => accum + commit.hash, ""));
-        let hash = new TextDecoder().decode(await crypto.subtle.digest("SHA-256", buffer));
+        let hashInput = new HashInput(author, message, timestamp, tabs, parentHashes);
+        let hash = await new Crypto().sha2Hash(hashInput.stringify());
         return new Commit(hash, author, timestamp, message, tabs, parentHashes);
     }
 
