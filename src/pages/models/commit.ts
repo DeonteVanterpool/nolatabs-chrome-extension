@@ -46,7 +46,7 @@ export class Commit {
     timestamp: Date;
     message: string;
     deltas: CommitDiff;
-    parents: string[]; // hash of parent commit, null if no parent (initial commit)
+    parents: string[]; // hash of parent commit, empty if no parent (initial commit)
 
     constructor(
         hash: string,
