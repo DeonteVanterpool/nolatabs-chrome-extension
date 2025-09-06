@@ -43,6 +43,7 @@ var options = {
         background: path.join(__dirname, 'src', 'pages', 'Background', 'index.ts'),
         contentScript: path.join(__dirname, 'src', 'pages', 'Content', 'index.ts'),
         devtools: path.join(__dirname, 'src', 'pages', 'Devtools', 'index.js'),
+        frontend: path.join(__dirname, 'src', 'pages', 'Frontend', 'index.tsx'),
         panel: path.join(__dirname, 'src', 'pages', 'Panel', 'index.jsx'),
     },
     chromeExtensionBoilerplate: {
@@ -215,6 +216,12 @@ var options = {
             template: path.join(__dirname, 'src', 'pages', 'Panel', 'index.html'),
             filename: 'panel.html',
             chunks: ['panel'],
+            cache: false,
+        }),
+        new HtmlWebpackPlugin({
+            template: path.join(__dirname, 'src', 'pages', 'Frontend', 'index.html'),
+            filename: 'frontend.html',
+            chunks: ['frontend'],
             cache: false,
         }),
     ].filter(Boolean),
