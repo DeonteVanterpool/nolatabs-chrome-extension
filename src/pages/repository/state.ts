@@ -1,36 +1,43 @@
 import { SettingsV1 } from './settings';
 
 export const LATEST = 1;
+export type StateBuilder = StateV1Builder;
 export type State = StateV1; // add future versions here using union types
 
+/** This is the state item that will be stored in chrome.storage. Never build state objects directly, always use the builder
+ * See `documentation/updating_schemas.md` for guidance on how to make changes the storage schema.
+ */
 export type StateV1 = {
     username: string,
-    email: string | null,
+    email: string,
     passwordHash: string,
     premiumUser: boolean,
     settings: SettingsV1,
+    schemaVersion: 1,
 }
 
-export class StateFactory {
-    public static create(username: string, email: string, passwordHash: string, premiumUser: boolean, settings: SettingsV1, version: number): State {
-        switch (version) {
-            case 1:
-                return StateV1Factory.create(username, email, passwordHash, premiumUser, settings as SettingsV1);
-            default:
-                throw Error("Unsupported state version " + version);
-        }
-    }
-}
+export class StateV1Builder {
 
-export class StateV1Factory {
-    public static create(username: string, email: string, passwordHash: string, premiumUser: boolean, settings: SettingsV1): StateV1 {
-        return {
+    state: StateV1;
+
+    public constructor(username: string, email: string, passwordHash: string, settings: SettingsV1) {
+        this.state = {
             username: username,
             email: email,
             passwordHash: passwordHash,
-            premiumUser: premiumUser,
+            premiumUser: false,
             settings: settings,
+            schemaVersion: 1,
         };
+    }
+
+    public setPremiumUser(premiumUser: boolean): StateV1Builder {
+        this.state.premiumUser = premiumUser;
+        return this;
+    }
+
+    public build(): StateV1 {
+        return this.state;
     }
 }
 
