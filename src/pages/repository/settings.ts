@@ -1,5 +1,9 @@
+type LATEST_SETTINGS = SettingsV1;
 export type Settings = SettingsV1; // add future versions here using union types
 
+/** This is the settings item that will be stored in chrome.storage. Never build settings objects directly, always use the builder
+ * See `documentation/updating_schemas.md` for guidance on how to make changes the storage schema.
+ */
 export type SettingsV1 = {
     devMode: boolean,
     autoCommit: boolean,
@@ -8,8 +12,8 @@ export type SettingsV1 = {
     autoPush: boolean,
 }
 
-export class SettingsV1Builder {
-    settings: SettingsV1;
+export class SettingsBuilder {
+    settings: LATEST_SETTINGS;
 
     public constructor() {
         this.settings = {
@@ -21,27 +25,27 @@ export class SettingsV1Builder {
         };
     }
 
-    public setDevMode(devMode: boolean): SettingsV1Builder {
+    public setDevMode(devMode: boolean): SettingsBuilder {
         this.settings.devMode = devMode;
         return this;
     }
 
-    public setAutoCommit(autoCommit: boolean): SettingsV1Builder {
+    public setAutoCommit(autoCommit: boolean): SettingsBuilder {
         this.settings.autoCommit = autoCommit;
         return this;
     }
 
-    public setCommitIntervalTime(commitIntervalTime: number): SettingsV1Builder {
+    public setCommitIntervalTime(commitIntervalTime: number): SettingsBuilder {
         this.settings.commitIntervalTime = commitIntervalTime;
         return this;
     }
 
-    public setCommitMode(commitMode: "smart" | "timer" | "greedy"): SettingsV1Builder {
+    public setCommitMode(commitMode: "smart" | "timer" | "greedy"): SettingsBuilder {
         this.settings.commitMode = commitMode;
         return this;
     }
 
-    public setAutoPush(autoPush: boolean): SettingsV1Builder {
+    public setAutoPush(autoPush: boolean): SettingsBuilder {
         this.settings.autoPush = autoPush;
         return this;
     }
