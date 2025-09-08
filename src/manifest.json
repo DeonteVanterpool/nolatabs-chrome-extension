@@ -39,8 +39,8 @@
     "commands": {
         "command-pallete": {
             "suggested_key": {
-                "default": "Alt+Comma",
-                "mac": "Alt+Comma"
+                "default": "Alt+Period",
+                "mac": "Alt+Period"
             },
             "description": "Run NolaTabs command pallete."
         }

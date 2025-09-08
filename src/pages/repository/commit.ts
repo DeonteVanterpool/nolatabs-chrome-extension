@@ -3,8 +3,25 @@ import { Repository } from '../models/repository';
 
 export const validRepoOwner = new RegExp("^[A-Za-z@.-]+$");
 export const validRepoName = new RegExp("^[A-Za-z/#@.-]+$");
+export const latest = 1;
 
 export interface ICommitRepository { }
+
+type CommitPage = {
+    repo: { owner: string, name: string };
+    commits: CommitStorageItem[],
+    version: number,
+}
+
+type CommitStorageItem = {
+    hash: string,
+    author: string,
+    timestamp: number,
+    message: string,
+    deltas: CommitDiff,
+    parents: string[],
+    repo: string,
+}
 
 class CommitStorage {
     hash: string;
@@ -13,7 +30,7 @@ class CommitStorage {
     message: string;
     deltas: CommitDiff;
     parents: string[];
-    repo: { owner: string, name: string }
+    repo: string;
 
     public constructor(commit: Commit, repo: Repository) {
         if (!validRepoOwner.test(repo.owner)) {
@@ -21,13 +38,17 @@ class CommitStorage {
         } else if (!validRepoName.test(repo.name)) {
             throw Error("Invalid name for a repo");
         }
-        this.repo = { owner: repo.owner, name: repo.name };
+        this.repo = repo.owner + ":" + repo.name;
         this.hash = commit.hash;
         this.author = commit.author;
         this.timestamp = commit.timestamp.getTime();
         this.message = commit.message;
         this.deltas = commit.deltas;
         this.parents = commit.parents;
+    }
+
+    public toItem(): CommitStorageItem {
+        return this as CommitStorageItem;
     }
 
     public toCommit(): Commit {
@@ -53,7 +74,7 @@ export class CommitRepository {
     }
 
     public async init(repo: Repository) {
-        let commits: CommitStorage[] = await this.storage.get("commits") as CommitStorage[]; // worst case scenario, we can start paginating these commits
+        let commits: CommitStorage[] = await this.storage.get("commits:${repo.owner}:${repo.name}") as CommitStorage[]; // worst case scenario, we can start paginating these commits
         commits.filter((commit) => commit.repo.name === repo.name && commit.repo.owner === repo.owner ).forEach((commit) => this.commits.set(commit.hash, commit.toCommit()));
         this.repo = repo;
     }
@@ -84,7 +105,7 @@ export class CommitRepository {
 
     public async add(commit: Commit) {
         this.commits.set(commit.hash, commit);
-        if (commit.parents.length == 0) {
+        if (commit.parents.length === 0) {
             await this.sync();
             return;
         }

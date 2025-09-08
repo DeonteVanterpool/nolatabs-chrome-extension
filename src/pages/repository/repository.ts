@@ -6,12 +6,10 @@ export interface IRepositoryRepository {
 }
 
 class RepositoryStorage {
-    head: string;
     name: string;
     owner: string;
     public constructor(repo: Repository) {
         this.name = repo.name;
-        this.head = repo.head;
         this.owner = repo.owner;
     }
 }
@@ -28,7 +26,6 @@ export class RepositoryRepository {
         if (!repo) {
             throw Error("No repo for given owner " + owner + " and name " + name);
         }
-        let head = repo.head;
     }
 }
 
