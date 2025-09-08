@@ -71,6 +71,9 @@ export class StateRepository {
     }
 
     public async create(state: State) {
+        if (await this.storage.get("state")) {
+            throw new Error("State already initialized");
+        }
         await this.update(state);
     }
 }
