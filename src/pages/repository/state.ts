@@ -1,7 +1,7 @@
 import { SettingsV1 } from './settings';
 
-export const LATEST = 1;
-export type StateBuilder = StateV1Builder;
+export const LATEST_VERSION = 1;
+export type LATEST_STATE = StateV1;
 export type State = StateV1; // add future versions here using union types
 
 /** This is the state item that will be stored in chrome.storage. Never build state objects directly, always use the builder
@@ -16,9 +16,9 @@ export type StateV1 = {
     schemaVersion: 1,
 }
 
-export class StateV1Builder {
+export class StateBuilder {
 
-    state: StateV1;
+    state: LATEST_STATE;
 
     public constructor(username: string, email: string, passwordHash: string, settings: SettingsV1) {
         this.state = {
@@ -27,11 +27,11 @@ export class StateV1Builder {
             passwordHash: passwordHash,
             premiumUser: false,
             settings: settings,
-            schemaVersion: 1,
+            schemaVersion: LATEST_VERSION,
         };
     }
 
-    public setPremiumUser(premiumUser: boolean): StateV1Builder {
+    public setPremiumUser(premiumUser: boolean): StateBuilder {
         this.state.premiumUser = premiumUser;
         return this;
     }
