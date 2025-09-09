@@ -11,6 +11,7 @@ type CommitPage = {
     repo: { owner: string, name: string },
     commits: CommitStorageItem[],
     version: number,
+    // in the future we can add pagination here
 }
 
 type CommitStorageItem = {
@@ -44,6 +45,10 @@ class CommitStorage {
         this.parents = commit.parents;
     }
 
+    public static fromStorageItem(item: CommitStorageItem): CommitStorage {
+        return item as CommitStorage;
+    }
+
     public toItem(): CommitStorageItem {
         return this as CommitStorageItem;
     }
@@ -70,16 +75,29 @@ export class CommitRepository {
         this.repo = null;
     }
 
-    public async init(repo: Repository) {
-        let commits: CommitStorage[] = await this.storage.get(`commits:${repo.owner}:${repo.name}`) as CommitStorage[];
-        commits.filter((commit) => commit.repo.name === repo.name && commit.repo.owner === repo.owner ).forEach((commit) => this.commits.set(commit.hash, commit.toCommit()));
+    public async cd(repo: Repository) {
+        let commitPage: CommitPage = await this.storage.get(`commits:${repo.owner}:${repo.name}`) as CommitPage;
+        this.commits.clear();
+        commitPage.commits.forEach((commit) => this.commits.set(commit.hash, CommitStorage.fromStorageItem(commit).toCommit()));
         this.repo = repo;
     }
 
     private async sync() {
+        if (!this.repo) {
+            throw new Error("Repository not initialized");
+        }
+        let path = `commits:${this.repo.owner}:${this.repo.name}`;
         let commits: CommitStorage[] = [];
         this.commits.forEach((val, _key) => commits.push(new CommitStorage(val, this.repo as Repository)));
-        await this.storage.set({ commits: commits });
+        let commitPage: CommitPage = {
+            repo: { owner: this.repo.owner, name: this.repo.name },
+            commits: commits.map((commit) => commit.toItem()),
+            version: latest,
+        }
+        // See: ES6 Computed Property Names https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Object_initializer#computed_property_names
+        this.storage.set({ 
+            [path]: commitPage,
+        });
     }
 
     public get(hash: string): Commit {
@@ -90,27 +108,18 @@ export class CommitRepository {
         return commit;
     }
 
-    public async delete(hash: string) {
-        if (!this.repo) {
-            throw new Error("Repository not initialized");
-        }
-        this.commits.delete(hash);
-        let commits: CommitStorage[] = [];
-        this.commits.forEach((val, _key) => commits.push(new CommitStorage(val, this.repo as Repository)));
-        await this.sync();
-    }
-
     public async add(commit: Commit) {
         this.commits.set(commit.hash, commit);
         if (commit.parents.length === 0) {
             await this.sync();
             return;
         }
-        let base = this.commits.get(commit.parents[0]); // TODO: loop through parents
+        commit.parents.forEach((p) => {
+        let base = this.commits.get(p); // TODO: loop through parents
         if (!base) {
-            throw new Error("Base " + commit.parents[0] + " does not exist in repo" + this.repo)
+            throw new Error("Base " + p + " does not exist in repo" + this.repo)
         }
-        this.commits.set(base.hash, base);
+        });
         await this.sync();
     }
 }
