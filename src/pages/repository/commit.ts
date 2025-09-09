@@ -10,10 +10,7 @@ export interface ICommitRepository { }
 type CommitPage = {
     repo: { owner: string, name: string },
     commits: CommitStorageItem[],
-    capacity: number,
-    count: number,
     version: number,
-    nextPageToken?: string,
 }
 
 type CommitStorageItem = {
@@ -74,7 +71,7 @@ export class CommitRepository {
     }
 
     public async init(repo: Repository) {
-        let commits: CommitStorage[] = await this.storage.get("commits:${repo.owner}:${repo.name}") as CommitStorage[];
+        let commits: CommitStorage[] = await this.storage.get(`commits:${repo.owner}:${repo.name}`) as CommitStorage[];
         commits.filter((commit) => commit.repo.name === repo.name && commit.repo.owner === repo.owner ).forEach((commit) => this.commits.set(commit.hash, commit.toCommit()));
         this.repo = repo;
     }
