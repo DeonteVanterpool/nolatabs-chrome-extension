@@ -1,8 +1,9 @@
 import {Commit} from '../models/commit';
 import {Repository} from '../models/repository';
 
-export interface IRepositoryRepository {
-
+type RepositoryStorageItem = {
+    name: string,
+    owner: string,
 }
 
 class RepositoryStorage {
@@ -21,8 +22,15 @@ export class RepositoryRepository {
         this.storage = storage;
     }
 
-    public async init(name: string, owner: string) {
-            let repo = (await this.storage.get("repositories") as Repository[]).find((repo) => repo.name === name && repo.owner === owner);
+    public async init() {
+        await this.storage.set({ repositories: [] })
+    }
+
+    public async new(repo: Repository) {
+    }
+
+    public async get(name: string, owner: string) {
+            let repo = (await this.storage.get("repositories") as RepositoryStorageItem[]).find((repo) => repo.name === name && repo.owner === owner);
         if (!repo) {
             throw Error("No repo for given owner " + owner + " and name " + name);
         }
