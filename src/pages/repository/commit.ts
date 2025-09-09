@@ -32,7 +32,6 @@ class CommitStorage {
     message: string;
     deltas: CommitDiff;
     parents: string[];
-    repo: string;
 
     public constructor(commit: Commit, repo: Repository) {
         if (!validRepoOwner.test(repo.owner)) {
@@ -40,7 +39,6 @@ class CommitStorage {
         } else if (!validRepoName.test(repo.name)) {
             throw Error("Invalid name for a repo");
         }
-        this.repo = repo.owner + ":" + repo.name;
         this.hash = commit.hash;
         this.author = commit.author;
         this.timestamp = commit.timestamp.getTime();
