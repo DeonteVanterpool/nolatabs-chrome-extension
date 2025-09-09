@@ -74,7 +74,7 @@ export class CommitRepository {
     }
 
     public async init(repo: Repository) {
-        let commits: CommitStorage[] = await this.storage.get("commits:${repo.owner}:${repo.name}") as CommitStorage[]; // worst case scenario, we can start paginating these commits
+        let commits: CommitStorage[] = await this.storage.get("commits:${repo.owner}:${repo.name}") as CommitStorage[];
         commits.filter((commit) => commit.repo.name === repo.name && commit.repo.owner === repo.owner ).forEach((commit) => this.commits.set(commit.hash, commit.toCommit()));
         this.repo = repo;
     }
