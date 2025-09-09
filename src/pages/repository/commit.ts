@@ -8,9 +8,12 @@ export const latest = 1;
 export interface ICommitRepository { }
 
 type CommitPage = {
-    repo: { owner: string, name: string };
+    repo: { owner: string, name: string },
     commits: CommitStorageItem[],
+    capacity: number,
+    count: number,
     version: number,
+    nextPageToken?: string,
 }
 
 type CommitStorageItem = {
@@ -20,7 +23,6 @@ type CommitStorageItem = {
     message: string,
     deltas: CommitDiff,
     parents: string[],
-    repo: string,
 }
 
 class CommitStorage {
