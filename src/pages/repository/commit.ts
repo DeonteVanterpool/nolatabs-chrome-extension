@@ -1,67 +1,98 @@
-import { Commit, CommitDiff } from '../models/commit';
+import { Addition, Commit, CommitDiff, Deletion } from '../models/commit';
 import { Repository } from '../models/repository';
+import { Store } from './store';
 
 export const validRepoOwner = new RegExp("^[A-Za-z@.-]+$");
 export const validRepoName = new RegExp("^[A-Za-z/#@.-]+$");
-export const latest = 1;
 
+export const LATEST_VERSION = 1;
+type LATEST_SCHEMA = CommitPageV1;
+export type CommitPage = CommitPageV1; // add future versions here using union types
 export interface ICommitRepository { }
 
-type CommitPage = {
+type CommitPageV1 = {
     repo: { owner: string, name: string },
-    commits: CommitStorageItem[],
+    commits: CommitStorageV1[],
     version: number,
     // in the future we can add pagination here
 }
 
-type CommitStorageItem = {
+type CommitStorageV1 = {
     hash: string,
     author: string,
     timestamp: number,
     message: string,
-    deltas: CommitDiff,
+    additions: AdditionStorageV1[],
+    deletions: DeletionStorageV1[],
     parents: string[],
 }
 
-class CommitStorage {
-    hash: string;
-    author: string;
-    timestamp: number;
-    message: string;
-    deltas: CommitDiff;
-    parents: string[];
+type AdditionStorageV1 = {
+    tab: TabStorageV1,
+    after: number,
+}
 
-    public constructor(commit: Commit, repo: Repository) {
+type DeletionStorageV1 = {
+    index: number,
+}
+
+type TabStorageV1 = {
+    url: string,
+    title: string,
+    favicon: string,
+    pinned: boolean,
+}
+
+class CommitPageStore extends Store<Commit[], CommitPage> {
+    repo: Repository;
+
+    public constructor(repo: Repository) {
+        super()
         if (!validRepoOwner.test(repo.owner)) {
             throw Error("Invalid owner name / email");
         } else if (!validRepoName.test(repo.name)) {
             throw Error("Invalid name for a repo");
         }
-        this.hash = commit.hash;
-        this.author = commit.author;
-        this.timestamp = commit.timestamp.getTime();
-        this.message = commit.message;
-        this.deltas = commit.deltas;
-        this.parents = commit.parents;
+        this.repo = repo;
     }
 
-    public static fromStorageItem(item: CommitStorageItem): CommitStorage {
-        return item as CommitStorage;
-    }
-
-    public toItem(): CommitStorageItem {
-        return this as CommitStorageItem;
-    }
-
-    public toCommit(): Commit {
+    public serialize(commits: Commit[]): CommitPage {
         return {
-            author: this.author,
-            hash: this.hash,
-            timestamp: new Date(this.timestamp),
-            message: this.message,
-            deltas: this.deltas,
-            parents: this.parents,
-        } as Commit;
+            repo: this.repo,
+            commits: CommitPageStore.toStorage(commits),
+            version: LATEST_VERSION,
+        };
+    }
+
+    public deserialize(page: CommitPage): Commit[] {
+        if (page.version < LATEST_VERSION) {
+            // run migrations
+        }
+
+        return page.commits.map((c) => {
+            return {
+                hash: c.hash,
+                author: c.author,
+                timestamp: new Date(c.timestamp),
+                message: c.message,
+                deltas: new CommitDiff(c.additions.map((a) => a as Addition), c.deletions.map((d) => d as Deletion)),
+                parents: c.parents,
+            } as Commit;
+        })
+    }
+
+    private static toStorage(commits: Commit[]): CommitStorageV1[] {
+        return commits.map((c) => {
+            return {
+                hash: c.hash,
+                author: c.author,
+                timestamp: c.timestamp.getTime(),
+                message: c.message,
+                additions: c.deltas.additions.map((a) => a as AdditionStorageV1),
+                deletions: c.deltas.deletions.map((d) => d as DeletionStorageV1),
+                parents: c.parents,
+            };
+        });
     }
 }
 
@@ -87,12 +118,12 @@ export class CommitRepository {
             throw new Error("Repository not initialized");
         }
         let path = `commits:${this.repo.owner}:${this.repo.name}`;
-        let commits: CommitStorage[] = [];
+        let commits: CommitStorageV1[] = [];
         this.commits.forEach((val, _key) => commits.push(new CommitStorage(val, this.repo as Repository)));
         let commitPage: CommitPage = {
             repo: { owner: this.repo.owner, name: this.repo.name },
             commits: commits.map((commit) => commit.toItem()),
-            version: latest,
+            version: latest, // todo: handle migrations
         }
         // See: ES6 Computed Property Names https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Object_initializer#computed_property_names
         this.storage.set({ 

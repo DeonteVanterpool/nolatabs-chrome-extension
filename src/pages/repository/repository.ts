@@ -4,6 +4,7 @@ import {Repository} from '../models/repository';
 type RepositoryStorageItem = {
     name: string,
     owner: string,
+    version: number,
 }
 
 class RepositoryStorage {
@@ -26,7 +27,12 @@ export class RepositoryRepository {
         await this.storage.set({ repositories: [] })
     }
 
+    public async list(): Promise<Repository[]> {
+        return await this.storage.get("repositories").map(item);
+    }
+
     public async new(repo: Repository) {
+
     }
 
     public async get(name: string, owner: string) {
