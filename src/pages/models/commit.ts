@@ -25,8 +25,6 @@ export class Commit {
     }
 }
 
-export type Delta = Addition | Deletion;
-
 export class CommitDiff {
     // deltas
     additions: Addition[];
@@ -60,6 +58,8 @@ export class Deletion {
         this.index = index;
     }
 }
+
+export type Delta = Addition | Deletion;
 
 export class Snapshot {
     commit: string; // string storing hash of commit

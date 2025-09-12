@@ -2,45 +2,8 @@ import {Tab} from '../models/tab';
 import {Addition, Commit, CommitDiff, Deletion, Delta} from '../models/commit';
 import {Crypto} from './crypto';
 
-class CommitHashInput {
-    author: string;
-    message: string;
-    timestamp: Date;
-    tabs: Tab[];
-    parentHashes: string[];
-
-    constructor(
-        author: string,
-        message: string,
-        timestamp: Date,
-        tabs: Tab[],
-        parentHashes: string[],
-    ) {
-        this.author = author;
-        this.message = message;
-        this.timestamp = timestamp;
-        this.tabs = tabs;
-        this.parentHashes = parentHashes;
-    }
-
-    // converts tabs into something that can be used by the hashing algo
-    private tabsToTree(tabs: Tab[]): string[] {
-        return tabs.map((t) => {
-            return "url " + t.url + "pinned " + t.pinned;
-        });
-    }
-
-    public stringify(): string {
-        return "author " + this.author + "\nmessage " + this.message + "\ntimestamp " + this.timestamp.getTime() + "\ntabs " + this.tabsToTree(this.tabs) + "\nparents " + this.parentHashes.slice().sort().join(" ");
-    }
-
-    public encode(): Uint8Array {
-        return new TextEncoder().encode(this.stringify());
-    }
-}
-
 export class CommitService {
-    async commit(graph: Map<string, Commit>, author: string, message: string, tabs: Tab[], parents: string[]): Promise<Map<string, Commit>> {
+    public async commit(graph: Map<string, Commit>, author: string, message: string, tabs: Tab[], parents: string[]): Promise<{commit: Commit, graph: Map<string, Commit>}> {
         let timestamp = new Date();
         let hashInput = new CommitHashInput(author, message, timestamp, tabs, parents);
         let hash = await new Crypto().sha2Hash(hashInput.stringify());
@@ -57,34 +20,14 @@ export class CommitService {
         } else { // merge commit
             diff = new CommitDiff([], []); // NO evil merges!
         }
-        graph = new Map(graph);
-        graph.set(hash, new Commit(hash, author, new Date(), message, diff, parents));
-        return graph;
-    }
-
-    /** 
-     * Merges changes from multiple parent commits into a single CommitDiff.
-     * This is done by finding the common ancestor of all parents and calculating
-     * the diff from that ancestor to each parent, then combining those diffs.
-     */
-    public static mergeChanges(graph: Map<string, Commit>, parents: string[]): CommitDiff {
-        let additions: Addition[] = [];
-        let deletions: Deletion[] = [];
-        let commonAncestorHash = CommitService.getCommonAncestor(graph, parents)!;
-        let snapshot = SnapshotService.getSnapshot(graph, commonAncestorHash);
-        for (let parentHash of parents.slice(1, parents.length)) {
-            let parentSnapshot = SnapshotService.getSnapshot(graph, parentHash);
-            let deltaFromAncestorToParent = DiffService.diff(snapshot, parentSnapshot);
-
-            // concatentate all the changes
-            additions = additions.concat(deltaFromAncestorToParent.additions);
-            deletions = deletions.concat(deltaFromAncestorToParent.deletions);
-        }
-        return new CommitDiff(additions, deletions);
+        let commit = new Commit(hash, author, timestamp, message, diff, parents);
+        graph = new Map(graph); // create a new map to prevent mutation
+        graph.set(hash, commit);
+        return {commit, graph};
     }
 
     // Returns the lowest common ancestor between two commits. If there is none, this method returns undefined
-    public static getCommonAncestor(graph: Map<string, Commit>, commits: string[]): string | undefined {
+    static getCommonAncestor(graph: Map<string, Commit>, commits: string[]): string | undefined {
         if (commits.length === 1) {
             return commits[0];
         }
@@ -147,7 +90,44 @@ export class CommitService {
     }
 }
 
-export class SnapshotService {
+class CommitHashInput {
+    author: string;
+    message: string;
+    timestamp: Date;
+    tabs: Tab[];
+    parentHashes: string[];
+
+    constructor(
+        author: string,
+        message: string,
+        timestamp: Date,
+        tabs: Tab[],
+        parentHashes: string[],
+    ) {
+        this.author = author;
+        this.message = message;
+        this.timestamp = timestamp;
+        this.tabs = tabs;
+        this.parentHashes = parentHashes;
+    }
+
+    // converts tabs into something that can be used by the hashing algo
+    private tabsToTree(tabs: Tab[]): string[] {
+        return tabs.map((t) => {
+            return "url " + t.url + "pinned " + t.pinned;
+        });
+    }
+
+    stringify(): string {
+        return "author " + this.author + "\nmessage " + this.message + "\ntimestamp " + this.timestamp.getTime() + "\ntabs " + this.tabsToTree(this.tabs) + "\nparents " + this.parentHashes.slice().sort().join(" ");
+    }
+
+    encode(): Uint8Array {
+        return new TextEncoder().encode(this.stringify());
+    }
+}
+
+class SnapshotService {
     static getSnapshot(graph: Map<string, Commit>, commit: string): Tab[] {
         let c = graph.get(commit);
         if (!c) {
@@ -163,17 +143,39 @@ export class SnapshotService {
             } else {
                 throw new Error(`Parent commit ${c.parents[0]} not found`);
             }
-        } else {
+        } else { // merge commit (no evil merges!)
             let commonAncestorHash = CommitService.getCommonAncestor(graph, c.parents);
-            let diff = CommitService.mergeChanges(graph, c.parents); // merge commit (no evil merges!)
+            let diff = this.aggregateDiffs(graph, c.parents);
             let snapshot = SnapshotService.getSnapshot(graph, commonAncestorHash!);
             return DiffService.apply(snapshot, diff);
         }
     }
+
+    /** 
+     * Aggregates changes from multiple parent commits into a single CommitDiff.
+     * This is done by finding the common ancestor of all parents and calculating
+     * the diff from that ancestor to each parent, then combining those diffs.
+     */
+    static aggregateDiffs(graph: Map<string, Commit>, parents: string[]): CommitDiff {
+        let additions: Addition[] = [];
+        let deletions: Deletion[] = [];
+        let commonAncestorHash = CommitService.getCommonAncestor(graph, parents)!;
+        let snapshot = SnapshotService.getSnapshot(graph, commonAncestorHash);
+        for (let parentHash of parents.slice(1, parents.length)) {
+            let parentSnapshot = SnapshotService.getSnapshot(graph, parentHash);
+            let deltaFromAncestorToParent = DiffService.diff(snapshot, parentSnapshot);
+
+            // concatentate all the changes
+            additions = additions.concat(deltaFromAncestorToParent.additions);
+            deletions = deletions.concat(deltaFromAncestorToParent.deletions);
+        }
+        return new CommitDiff(additions, deletions);
+    }
+
 }
 
 class DiffService {
-    public static apply(to: Tab[], diff: CommitDiff): Tab[] {
+    static apply(to: Tab[], diff: CommitDiff): Tab[] {
         let tabs: Tab[] = [];
 
         let ptr1 = 0; // ptr to additions array
@@ -207,7 +209,7 @@ class DiffService {
         return tabs;
     }
 
-    public static diff(a: Tab[], b: Tab[]): CommitDiff {
+    static diff(a: Tab[], b: Tab[]): CommitDiff {
         // here, we will use the Myer's diff algorithm to compare the current state of tabs with the previous state
         // algorithm based on https://blog.jcoglan.com/2017/02/15/the-myers-diff-algorithm-part-1/
 
@@ -274,5 +276,4 @@ class DiffService {
         }
         return [];
     }
-
 }
