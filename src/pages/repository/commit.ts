@@ -75,7 +75,7 @@ class CommitPageStore extends Store<Commit[], CommitPage> {
                 author: c.author,
                 timestamp: new Date(c.timestamp),
                 message: c.message,
-                deltas: new CommitDiff(c.additions.map((a) => a as Addition), c.deletions.map((d) => d as Deletion)),
+                diff: new CommitDiff(c.additions.map((a) => a as Addition), c.deletions.map((d) => d as Deletion)),
                 parents: c.parents,
             } as Commit;
         })
@@ -88,8 +88,8 @@ class CommitPageStore extends Store<Commit[], CommitPage> {
                 author: c.author,
                 timestamp: c.timestamp.getTime(),
                 message: c.message,
-                additions: c.deltas.additions.map((a) => a as AdditionStorageV1),
-                deletions: c.deltas.deletions.map((d) => d as DeletionStorageV1),
+                additions: c.diff.additions.map((a) => a as AdditionStorageV1),
+                deletions: c.diff.deletions.map((d) => d as DeletionStorageV1),
                 parents: c.parents,
             };
         });

@@ -1,42 +1,67 @@
-import {Commit} from '../models/commit';
 import {Repository} from '../models/repository';
+import {Store} from './store';
 
-type RepositoryStorageItem = {
+type RepositoryStorageItem = RepositoryStorageItemV1; // add future versions here using union types
+export const LATEST_VERSION = 1;
+
+type RepositoryStorageItemV1 = {
     name: string,
     owner: string,
     version: number,
 }
 
-class RepositoryStorage {
-    name: string;
-    owner: string;
-    public constructor(repo: Repository) {
-        this.name = repo.name;
-        this.owner = repo.owner;
+class RepositoryStore extends Store<Repository[], RepositoryStorageItem[]> {
+    deserialize(objects: RepositoryStorageItem[]): Repository[] {
+        return objects.map((obj) => {
+            if (obj.version < LATEST_VERSION) {
+                // run migrations
+            }
+            return new Repository(obj.name, obj.owner)
+        });
+    }
+
+    serialize(models: Repository[]): RepositoryStorageItemV1[] {
+        return models.map((obj) => {
+            return {
+                name: obj.name,
+                owner: obj.owner,
+                version: LATEST_VERSION,
+            };
+        })
+    }
+
+    public constructor() {
+        super();
     }
 }
 
 // HAHA
 export class RepositoryRepository {
     storage: chrome.storage.StorageArea;
+
     public constructor(storage: chrome.storage.StorageArea) {
         this.storage = storage;
     }
 
     public async init() {
-        await this.storage.set({ repositories: [] })
+        if (!(await this.storage.get("repositories"))) {
+            await this.storage.set({repositories: []})
+        }
+        throw new Error("Repositories storage already initialized");
     }
 
     public async list(): Promise<Repository[]> {
-        return await this.storage.get("repositories").map(item);
+        return new RepositoryStore().deserialize(await this.storage.get("repositories") as RepositoryStorageItem[]);
     }
 
     public async new(repo: Repository) {
-
+        await this.storage.set({
+            repositories: new RepositoryStore().serialize([...await this.list(), repo])
+        });
     }
 
     public async get(name: string, owner: string) {
-            let repo = (await this.storage.get("repositories") as RepositoryStorageItem[]).find((repo) => repo.name === name && repo.owner === owner);
+        let repo = (await this.storage.get("repositories") as RepositoryStorageItem[]).find((repo) => repo.name === name && repo.owner === owner);
         if (!repo) {
             throw Error("No repo for given owner " + owner + " and name " + name);
         }
