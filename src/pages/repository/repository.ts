@@ -59,12 +59,5 @@ export class RepositoryRepository {
             repositories: new RepositoryStore().serialize([...await this.list(), repo])
         });
     }
-
-    public async get(name: string, owner: string) {
-        let repo = (await this.storage.get("repositories") as RepositoryStorageItem[]).find((repo) => repo.name === name && repo.owner === owner);
-        if (!repo) {
-            throw Error("No repo for given owner " + owner + " and name " + name);
-        }
-    }
 }
 
