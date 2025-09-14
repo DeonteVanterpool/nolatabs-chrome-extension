@@ -77,7 +77,7 @@ class CommitPageStore extends Store<Commit[], CommitPage> {
                 message: c.message,
                 diff: new CommitDiff(c.additions.map((a) => a as Addition), c.deletions.map((d) => d as Deletion)),
                 parents: c.parents,
-            } as Commit;
+            };
         })
     }
 
