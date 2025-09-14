@@ -1,9 +1,44 @@
 import {Tab} from '../models/tab';
 import {Addition, Commit, CommitDiff, Deletion, Delta} from '../models/commit';
 import {Crypto} from './crypto';
+import {CommitRepository} from '../repository/commit';
 
 export class CommitService {
-    public async commit(graph: Map<string, Commit>, author: string, message: string, tabs: Tab[], parents: string[]): Promise<{commit: Commit, graph: Map<string, Commit>}> {
+    repo: CommitRepository;
+
+    constructor(repo: CommitRepository) {
+        this.repo = repo;
+    }
+
+    public buildSnapshot(commit: string) {
+        return SnapshotService.getSnapshot(this.repo.commits, commit);
+    }
+
+    public list(): Commit[] {
+        return Array.from(this.repo.commits.values());
+    }
+
+    public get(hash: string): Commit {
+        return this.repo.get(hash);
+    }
+
+    public getTips(): Commit[] {
+        // in the future, we will add branch pointers to the storage
+        let tips: Commit[] = [];
+        let allParents: Set<string> = new Set();
+        for (let commit of this.list()) {
+            commit.parents.forEach((p) => allParents.add(p));
+        }
+        for (let commit of this.list()) {
+            if (!allParents.has(commit.hash)) {
+                tips.push(commit);
+            }
+        }
+        return tips;
+    }
+
+    public async commit(author: string, message: string, tabs: Tab[], parents: string[]): Promise<{commit: Commit, graph: Map<string, Commit>}> {
+        let graph = this.repo.commits;
         let timestamp = new Date();
         let hashInput = new CommitHashInput(author, message, timestamp, tabs, parents);
         let hash = await new Crypto().sha2Hash(hashInput.stringify());
@@ -23,6 +58,7 @@ export class CommitService {
         let commit = new Commit(hash, author, timestamp, message, diff, parents);
         graph = new Map(graph); // create a new map to prevent mutation
         graph.set(hash, commit);
+        this.repo.add(commit);
         return {commit, graph};
     }
 
