@@ -1,10 +1,10 @@
-type LATEST_SETTINGS = SettingsV1;
-export type Settings = SettingsV1; // add future versions here using union types
+type LATEST_SETTINGS = SettingsStorageV1;
+export type Settings = SettingsStorageV1; // add future versions here using union types
 
 /** This is the settings item that will be stored in chrome.storage. Never build settings objects directly, always use the builder
  * See `documentation/updating_schemas.md` for guidance on how to make changes the storage schema.
  */
-export type SettingsV1 = {
+export type SettingsStorageV1 = {
     devMode: boolean,
     autoCommit: boolean,
     commitIntervalTime: number, // Time it takes to autosave between commits in milliseconds
@@ -50,7 +50,7 @@ export class SettingsBuilder {
         return this;
     }
 
-    public build(): SettingsV1 {
+    public build(): SettingsStorageV1 {
         return this.settings;
     }
 }
