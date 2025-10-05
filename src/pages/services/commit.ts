@@ -75,7 +75,7 @@ export class CommitService {
     }
 
     // Returns the lowest common ancestor between two commits. If there is none, this method returns undefined
-    private static getCommonAncestor(graph: Map<string, Commit>, commits: string[]): string | undefined {
+    static getCommonAncestor(graph: Map<string, Commit>, commits: string[]): string | undefined {
         if (commits.length === 1) {
             return commits[0];
         }
