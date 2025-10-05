@@ -1,17 +1,17 @@
-import { Addition, Commit, CommitDiff, Deletion } from '../models/commit';
-import { Repository } from '../models/repository';
-import { Store } from './store';
+import {Addition, Commit, CommitDiff, Deletion} from '../models/commit';
+import {Repository} from '../models/repository';
+import {Store} from './store';
 
-export const validRepoOwner = new RegExp("^[A-Za-z@.-]+$");
-export const validRepoName = new RegExp("^[A-Za-z/#@.-]+$");
+export const validRepoOwner = new RegExp("^[0-9 A-Za-z@.-]+$");
+export const validRepoName = new RegExp("^[0-9 A-Za-z/#@.-]+$");
 
 export const LATEST_VERSION = 1;
 type LATEST_SCHEMA = CommitPageV1;
 export type CommitPage = CommitPageV1; // add future versions here using union types
-export interface ICommitRepository { }
+export interface ICommitRepository {}
 
 type CommitPageV1 = {
-    repo: { owner: string, name: string },
+    repo: {owner: string, name: string},
     commits: CommitStorageV1[],
     version: number,
     // in the future we can add pagination here
@@ -75,7 +75,10 @@ class CommitPageStore extends Store<Commit[], CommitPage> {
                 author: c.author,
                 timestamp: new Date(c.timestamp),
                 message: c.message,
-                diff: new CommitDiff(c.additions.map((a) => a as Addition), c.deletions.map((d) => d as Deletion)),
+                diff: {
+                    additions: c.additions.map((a) => a as Addition),
+                    deletions: c.deletions.map((d) => d as Deletion)
+                },
                 parents: c.parents,
             };
         })
@@ -98,54 +101,45 @@ class CommitPageStore extends Store<Commit[], CommitPage> {
 
 export class CommitRepository {
     storage: chrome.storage.StorageArea;
-    commits: Map<string, Commit>;
-    repo: Repository | null;
     public constructor(storage: chrome.storage.StorageArea) {
         this.storage = storage;
-        this.commits = new Map();
-        this.repo = null;
     }
 
-    public async cd(repo: Repository) {
-        let commits: Commit[] = new CommitPageStore(repo).deserialize(await this.storage.get(`commits:${repo.owner}:${repo.name}`) as CommitPage);
-        this.commits.clear();
-        commits.forEach((commit) => this.commits.set(commit.hash, commit));
-        this.repo = repo;
+    public async initialized(repo: Repository) {
+        return Object.keys(await this.storage.get(`commits:${repo.owner}:${repo.name}`)).length !== 0;
     }
 
-    private async sync() {
-        if (!this.repo) {
-            throw new Error("Repository not initialized");
+    public async init(repo: Repository) {
+        if (!(await this.initialized(repo))) {
+            let path = `commits:${repo.owner}:${repo.name}`;
+            (this.storage.set({
+                [path]: new CommitPageStore(repo).serialize([])
+            }));
         }
-        let path = `commits:${this.repo.owner}:${this.repo.name}`;
-        let store = new CommitPageStore(this.repo).serialize(Array.from(this.commits.values()));
+    }
+
+    public async sync(repo: Repository, commits: Map<string, Commit>) {
+        let path = `commits:${repo.owner}:${repo.name}`;
+        let store = new CommitPageStore(repo).serialize(Array.from(commits.values()));
         // See: ES6 Computed Property Names https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Object_initializer#computed_property_names
-        this.storage.set({ 
+        this.storage.set({
             [path]: store,
         });
     }
 
-    public get(hash: string): Commit {
-        let commit = this.commits.get(hash);
-        if (!commit) {
-            throw Error("No commit for given hash: " + hash);
-        }
-        return commit;
+    public async read(repo: Repository): Promise<Map<string, Commit>> {
+        let path = `commits:${repo.owner}:${repo.name}`;
+        let commitMap = new Map<string, Commit>();
+        let commits: Commit[] = new CommitPageStore(repo).deserialize((await this.storage.get(path))[path] as CommitPage);
+        commits.forEach((commit) => commitMap.set(commit.hash, commit));
+        return commitMap;
     }
 
-    public async add(commit: Commit) {
-        this.commits.set(commit.hash, commit);
-        if (commit.parents.length === 0) {
-            await this.sync();
-            return;
+    public async delete(repo: Repository) {
+        if (await this.initialized(repo)) {
+            let path = `commits:${repo.owner}:${repo.name}`;
+            (this.storage.remove(path));
         }
-        commit.parents.forEach((p) => {
-        let base = this.commits.get(p);
-        if (!base) {
-            throw new Error("Base " + p + " does not exist in repo" + this.repo)
-        }
-        });
-        await this.sync();
     }
 }
 

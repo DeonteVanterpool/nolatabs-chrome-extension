@@ -2,12 +2,14 @@ import React, {ChangeEvent, FormEvent, useState} from 'react';
 import './Frontend.css';
 import {UserService} from '../services/user';
 import {UserRepository} from '../repository/user';
+import {User} from '../models/user';
 
 interface Props {
-
+    onSignup: (user: User) => void;
+    renderLogin: () => void;
 }
 
-const Frontend: React.FC<Props> = ({}: Props) => {
+const Frontend: React.FC<Props> = ({ onSignup: onSignUp, renderLogin }: Props) => {
     const [name, setName] = useState('');
     const [password, setPassword] = useState('');
 
@@ -21,8 +23,9 @@ const Frontend: React.FC<Props> = ({}: Props) => {
 
     const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        await new UserService(new UserRepository(chrome.storage.local)).signup(name, password);
-        console.log("User created: ", await new UserService(new UserRepository(chrome.storage.local)).get());
+        let userService = new UserService(new UserRepository(chrome.storage.local));
+        userService.signup(name, password);
+        onSignUp((await userService.get())!);
     }
 
     return <div className="SignUpPage">
@@ -37,6 +40,7 @@ const Frontend: React.FC<Props> = ({}: Props) => {
             </label>
             <button type="submit">Sign Up</button>
         </form>
+        Already signed up? <button onClick={renderLogin}>Login</button>
     </div>;
 };
 

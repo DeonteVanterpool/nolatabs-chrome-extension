@@ -1,7 +1,9 @@
 import {Repository} from '../models/repository';
+import {CommitRepository} from './commit';
 import {Store} from './store';
 
 type RepositoryStorageItem = RepositoryStorageItemV1; // add future versions here using union types
+type RepositoryStorage = RepositoryStorageV1;
 export const LATEST_VERSION = 1;
 
 type RepositoryStorageItemV1 = {
@@ -10,24 +12,34 @@ type RepositoryStorageItemV1 = {
     version: number,
 }
 
-class RepositoryStore extends Store<Repository[], RepositoryStorageItem[]> {
-    deserialize(objects: RepositoryStorageItem[]): Repository[] {
-        return objects.map((obj) => {
-            if (obj.version < LATEST_VERSION) {
-                // run migrations
+type RepositoryStorageV1 = {
+    repositories: RepositoryStorageItem[];
+    version: number,
+}
+
+class RepositoryStore extends Store<Repository[], RepositoryStorage> {
+    deserialize(repositories: RepositoryStorage): Repository[] {
+        if (repositories.version < LATEST_VERSION) {
+            // run migrations
+        }
+        return repositories.repositories.map((obj) => {
+            return {
+                name: obj.name, owner: obj.owner
             }
-            return new Repository(obj.name, obj.owner)
         });
     }
 
-    serialize(models: Repository[]): RepositoryStorageItemV1[] {
-        return models.map((obj) => {
-            return {
-                name: obj.name,
-                owner: obj.owner,
-                version: LATEST_VERSION,
-            };
-        })
+    serialize(models: Repository[]): RepositoryStorage {
+        return {
+            repositories: models.map((obj) => {
+                return {
+                    name: obj.name,
+                    owner: obj.owner,
+                    version: LATEST_VERSION,
+                };
+            }),
+            version: LATEST_VERSION
+        };
     }
 
     public constructor() {
@@ -43,21 +55,26 @@ export class RepositoryRepository {
         this.storage = storage;
     }
 
+    public async initialized() {
+        return Object.keys(await this.storage.get("repositories")).length !== 0;
+    }
+
     public async init() {
-        if (!(await this.storage.get("repositories"))) {
-            await this.storage.set({repositories: []})
+        if (await this.initialized()) {
+            throw new Error("Repositories storage already initialized");
         }
-        throw new Error("Repositories storage already initialized");
+        await this.storage.set({repositories: []});
     }
 
     public async list(): Promise<Repository[]> {
-        return new RepositoryStore().deserialize(await this.storage.get("repositories") as RepositoryStorageItem[]);
+        return new RepositoryStore().deserialize((await this.storage.get("repositories")) as RepositoryStorage);
     }
 
     public async new(repo: Repository) {
-        await this.storage.set({
-            repositories: new RepositoryStore().serialize([...await this.list(), repo])
-        });
+        let commitRepo = new CommitRepository(this.storage);
+        await commitRepo.init(repo);
+        await this.storage.set(
+            new RepositoryStore().serialize([...await this.list(), repo]));
     }
 }
 

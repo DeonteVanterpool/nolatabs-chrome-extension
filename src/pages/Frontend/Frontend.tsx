@@ -1,20 +1,48 @@
-import React from 'react';
+import React, {useEffect, useState} from 'react';
 import './Frontend.css';
-import {UserService} from '../services/user';
-import {UserRepository} from '../repository/user';
 import Signup from './Signup';
+import {User} from '../models/user';
+import Login from './Login';
+import Main from './Main';
 
 type page = "signup" | "login" | "main"
 
-interface Props {
-    page: page;
-}
+interface Props { }
 
-let user = new UserService(new UserRepository(chrome.storage.local));
-
-const Frontend: React.FC<Props> = ({ page }: Props) => {
+const Frontend: React.FC<Props> = ({}: Props) => {
+    const [user, setCurrentUser] = useState<User | null>(null);
     // return <div className="FrontendContainer">{user ? "signup" : "login"} Page</div>;
-  return <Signup></Signup>
+    const [currentPage, setCurrentPage] = useState(user ? "login" : "signup");
+
+    function handleSignup(user: User) {
+        setCurrentPage("main");
+        setCurrentUser(user);
+    }
+
+    function renderLogin() {
+        setCurrentPage("login");
+    }
+    function handleLogin() {
+        setCurrentPage("main");
+        setCurrentUser(user);
+    }
+
+    function renderSignup() {
+        setCurrentPage("signup");
+    }
+    switch (currentPage) {
+        case "signup":
+            return (<>
+                <Signup onSignup={handleSignup} renderLogin={renderLogin}></Signup></>);
+        case "login":
+            return (<>
+                <Login onLogin={handleLogin} renderSignup={renderSignup}></Login></>);
+        case "main":
+            return (<>
+                <Main></Main></>);
+        default:
+            throw new Error("unexpected case");
+    }
 };
 
 export default Frontend;

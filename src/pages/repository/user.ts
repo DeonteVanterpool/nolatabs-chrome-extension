@@ -66,7 +66,7 @@ class UserStore extends Store<User, UserStorage> {
             // run migrations
         }
 
-        return new User(userStorage.username, userStorage.email, userStorage.passwordHash, userStorage.premium, new UserSettings(userStorage.settings.devMode, userStorage.settings.autoCommit, userStorage.settings.commitIntervalTime, userStorage.settings.commitMode, userStorage.settings.autoPush));
+        return {username: userStorage.username, email: userStorage.email, passwordHash: userStorage.passwordHash, premium: userStorage.premium, settings: {devMode: userStorage.settings.devMode, autoCommit: userStorage.settings.autoCommit, commitIntervalTime: userStorage.settings.commitIntervalTime, commitMode: userStorage.settings.commitMode, autoPush: userStorage.settings.autoPush}};
     }
 }
 

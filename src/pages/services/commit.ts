@@ -2,34 +2,27 @@ import {Tab} from '../models/tab';
 import {Addition, Commit, CommitDiff, Deletion, Delta} from '../models/commit';
 import {Crypto} from './crypto';
 import {CommitRepository} from '../repository/commit';
+import {Repository} from '../models/repository';
+
+type CommitStore = Map<string, Commit>;
 
 export class CommitService {
-    repo: CommitRepository;
-
-    constructor(repo: CommitRepository) {
-        this.repo = repo;
+    public static buildSnapshot(commits: CommitStore, commit: string): Tab[] {
+        return SnapshotService.getSnapshot(commits, commit);
     }
 
-    public buildSnapshot(commit: string) {
-        return SnapshotService.getSnapshot(this.repo.commits, commit);
+    public static list(commits: CommitStore): Commit[] {
+        return Array.from(commits.values());
     }
 
-    public list(): Commit[] {
-        return Array.from(this.repo.commits.values());
-    }
-
-    public get(hash: string): Commit {
-        return this.repo.get(hash);
-    }
-
-    public getTips(): Commit[] {
+    public static getTips(commits: CommitStore): Commit[] {
         // in the future, we will add branch pointers to the storage
         let tips: Commit[] = [];
         let allParents: Set<string> = new Set();
-        for (let commit of this.list()) {
+        for (let commit of this.list(commits)) {
             commit.parents.forEach((p) => allParents.add(p));
         }
-        for (let commit of this.list()) {
+        for (let commit of this.list(commits)) {
             if (!allParents.has(commit.hash)) {
                 tips.push(commit);
             }
@@ -37,8 +30,16 @@ export class CommitService {
         return tips;
     }
 
-    public async commit(author: string, message: string, tabs: Tab[], parents: string[]): Promise<{commit: Commit, graph: Map<string, Commit>}> {
-        let graph = this.repo.commits;
+    private static get(commits: CommitStore, hash: string): Commit {
+        let commit = commits.get(hash);
+        if (!commit) {
+            throw Error("No commit for given hash: " + hash);
+        }
+        return commit;
+    }
+
+    public static async commit(commits: CommitStore, author: string, message: string, tabs: Tab[], parents: string[]): Promise<{commit: Commit, graph: CommitStore}> {
+        let graph = commits;
         let timestamp = new Date();
         let hashInput = new CommitHashInput(author, message, timestamp, tabs, parents);
         let hash = await new Crypto().sha2Hash(hashInput.stringify());
@@ -51,19 +52,30 @@ export class CommitService {
             let parentSnapshot = SnapshotService.getSnapshot(graph, parentCommit.hash);
             diff = DiffService.diff(parentSnapshot, tabs);
         } else if (parents.length === 0) {
-            diff = new CommitDiff(tabs.map((tab, _) => new Addition(tab, -1)), []);
+            diff = {additions: tabs.map((tab, _) => {return {tab: tab, after: -1}}), deletions: []};
         } else { // merge commit
-            diff = new CommitDiff([], []); // NO evil merges!
+            diff = {additions: [], deletions: []}; // NO evil merges!
         }
-        let commit = new Commit(hash, author, timestamp, message, diff, parents);
+        let commit = {hash, author, timestamp, message, diff, parents};
         graph = new Map(graph); // create a new map to prevent mutation
         graph.set(hash, commit);
-        this.repo.add(commit);
+        await this.add(commits, commit);
         return {commit, graph};
     }
 
+    public static async add(commits: Map<string, Commit>, commit: Commit): Promise<Map<string, Commit>> {
+        commits.set(commit.hash, commit);
+        commit.parents.forEach((p) => {
+            let base = commits.get(p);
+            if (!base) {
+                throw new Error("Base " + p + " does not exist in repo")
+            }
+        });
+        return commits;
+    }
+
     // Returns the lowest common ancestor between two commits. If there is none, this method returns undefined
-    static getCommonAncestor(graph: Map<string, Commit>, commits: string[]): string | undefined {
+    private static getCommonAncestor(graph: Map<string, Commit>, commits: string[]): string | undefined {
         if (commits.length === 1) {
             return commits[0];
         }
@@ -205,7 +217,7 @@ class SnapshotService {
             additions = additions.concat(deltaFromAncestorToParent.additions);
             deletions = deletions.concat(deltaFromAncestorToParent.deletions);
         }
-        return new CommitDiff(additions, deletions);
+        return {additions, deletions};
     }
 
 }
@@ -253,13 +265,15 @@ class DiffService {
         let deletions: Deletion[] = [];
         let moves = this.shortest_edit(a, b);
         moves.forEach((move) => {
-            if (move instanceof Deletion) {
+            if ("index" in move) { // deletion
                 deletions.push(move);
-            } else if (move instanceof Addition) {
+            } else if ("tab" in move) { // addition
                 additions.push(move);
+            } else {
+                throw new Error("invalid move" + move);
             }
         });
-        return new CommitDiff(additions, deletions);
+        return {additions, deletions};
     }
 
     private static shortest_edit(a: Tab[], b: Tab[]): Delta[] {
@@ -293,9 +307,9 @@ class DiffService {
                 y = x - k;
 
                 if (1 <= y && y <= m && go_down) {
-                    hist.push(new Addition(b[y - 1], last_match)); // x - deletions, since we want to add after the last undeleted tab (just to keep things clean)
+                    hist.push({tab: b[y - 1], after: last_match}); // x - deletions, since we want to add after the last undeleted tab (just to keep things clean)
                 } else if (1 <= x && x <= n) {
-                    hist.push(new Deletion(x - 1));
+                    hist.push({index: x - 1});
                 } else { // keep
                 }
                 while (x < n && y < m && a[x].url === b[y].url) { // not at the end of either array and the urls match

@@ -6,3 +6,27 @@
   align-items: center;
   justify-content: center;
 }
+
+.Sidebar {
+    height: 100vh;
+    width: 300px;
+    margin-top: 0;
+    margin-bottom: 0;
+    border-right: 1px solid lightgrey;
+}
+
+.Main {
+    height: 100vh;
+    width: 100vw;
+    display: flex;
+}
+
+body {
+    padding: 0;
+    margin: 0;
+}
+
+.content {
+    width: 100%;
+}
+

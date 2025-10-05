@@ -15,7 +15,24 @@ export class UserService {
     }
 
     public async signup(name: string, password: string): Promise<boolean> {
-        return await this.repo.create(new User(name, "", await new Crypto().sha2Hash(password), false, new UserSettings(false, true, 3600, "timer", false))).then(() => true).catch(() => false);
+        return await this.repo.create({
+            username: name,
+            email: "",
+            passwordHash: await new Crypto().argon2Hash(password),
+            premium: false,
+            settings: {
+                devMode: false,
+                autoCommit: true,
+                commitIntervalTime: 3600,
+                commitMode: "timer",
+                autoPush: false,
+            },
+        }).then(() => true).catch(() => false);
+    }
+
+    public async authenticate(password: string): Promise<boolean> {
+        let user = await this.repo.read();
+        return await new Crypto().argon2Verify(password, user!.passwordHash) === true;
     }
 }
 
