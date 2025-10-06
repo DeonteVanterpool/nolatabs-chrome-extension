@@ -7,7 +7,7 @@ import {Repository} from '../models/repository';
 type CommitStore = Map<string, Commit>;
 
 export class CommitService {
-    public static buildSnapshot(commits: CommitStore, commit: string): Tab[] {
+    static buildSnapshot(commits: CommitStore, commit: string): Tab[] {
         return SnapshotService.getSnapshot(commits, commit);
     }
 
@@ -63,7 +63,15 @@ export class CommitService {
         return {commit, graph};
     }
 
-    public static async add(commits: Map<string, Commit>, commit: Commit): Promise<Map<string, Commit>> {
+    public static buildLatestSnapshot(commits: Map<string, Commit>): Tab[] {
+        let tabs: Tab[] = [];
+        if (CommitService.getTips(commits).length !== 0) {
+            tabs = CommitService.buildSnapshot(commits, CommitService.getTips(commits)[0].hash);
+        }
+        return tabs;
+    }
+
+    static async add(commits: Map<string, Commit>, commit: Commit): Promise<Map<string, Commit>> {
         commits.set(commit.hash, commit);
         commit.parents.forEach((p) => {
             let base = commits.get(p);

@@ -20,7 +20,7 @@ const Main: React.FC<Props> = ({}: Props) => {
             if (!(await repo.initialized())) {
                 await repo.init();
             }
-            setRepos((await new RepositoryService(new RepositoryRepository(chrome.storage.local)).list()!));
+            setRepos(await (new RepositoryRepository(chrome.storage.local).read()!));
             console.log(repos);
         }
         fetchRepos();
@@ -33,9 +33,9 @@ const Main: React.FC<Props> = ({}: Props) => {
         setRepositories();
     }, [repos]);
 
-    const handleNewRepo = (name: string) => {
+    const handleNewRepo = async (name: string) => {
         let repo: Repository = {owner: "me", name: name} // me is the default for the current user
-        new RepositoryService(new RepositoryRepository(chrome.storage.local)).new(repo);
+        await new RepositoryRepository(chrome.storage.local).create(repo);
         setRepos([...repos, repo]);
     }
 

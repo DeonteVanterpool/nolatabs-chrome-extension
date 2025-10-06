@@ -66,15 +66,20 @@ export class RepositoryRepository {
         await this.storage.set({repositories: []});
     }
 
-    public async list(): Promise<Repository[]> {
+    public async read(): Promise<Repository[]> {
         return new RepositoryStore().deserialize((await this.storage.get("repositories")) as RepositoryStorage);
     }
 
-    public async new(repo: Repository) {
+    public async create(repo: Repository) {
         let commitRepo = new CommitRepository(this.storage);
         await commitRepo.init(repo);
         await this.storage.set(
-            new RepositoryStore().serialize([...await this.list(), repo]));
+            new RepositoryStore().serialize([...await this.read(), repo]));
+    }
+
+    public async delete(repo: Repository) {
+        await this.storage.set(
+            new RepositoryStore().serialize((await this.read()).filter((r) => !(r.name === repo.name && r.owner === repo.owner))));
     }
 }
 

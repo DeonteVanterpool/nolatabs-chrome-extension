@@ -3,15 +3,15 @@ Creates a new commit / localsave on your computer. Brings up selection pane to d
 aliases: localsave (main)
 
 ## cd
-Change to a different repository
+Clear tabs and change to a different repository
 aliases: open (main)
 
 ## init
-Creates a new repository from the current window
+Creates a new repository from the current window's tabs
 aliases: initialize (main)
 
-## create
-Creates a new repository in a new window
+## mkrepo
+Clear tabs and create new repository in current window
 aliases: new (main)
 
 ## status
