@@ -63,8 +63,6 @@ and on your `src/manifest.json`:
 }
 ```
 
-## Secrets
-
 ## Resources:
 
 - [Webpack documentation](https://webpack.js.org/concepts/)
