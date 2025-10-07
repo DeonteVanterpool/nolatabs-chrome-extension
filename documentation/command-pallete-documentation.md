@@ -1,5 +1,5 @@
 ## commit
-Creates a new commit / localsave on your computer. Brings up selection pane to decide which tabs to add
+Creates a new commit / localsave on your computer.
 aliases: localsave (main)
 
 ## cd
