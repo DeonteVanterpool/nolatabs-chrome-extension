@@ -18,14 +18,54 @@
 8. Happy hacking.
 
 ## Usage
+The extension will open a new tab when you click on install. First, sign up by entering a username and password. These are necessary to ensure your data is encrypted correctly. Afterwards, you should be able to login using your password.
 
+You can then use the command pallete on the right to manage repositories. Supported commands are listed below:
+
+### commit
+Creates a new commit / localsave on your computer.
+aliases: localsave (main)
+
+### cd
+Clear tabs and change to a different repository
+aliases: open (main)
+
+### init
+Creates a new repository from the current window's tabs
+aliases: initialize (main)
+
+### mkrepo
+Clear tabs and create new repository in current window
+aliases: new (main)
+
+### status
+Displays changes since last commit
+aliases: changes (main)
+
+# Future Commands
+- branch
+- checkout
+
+### push
+Pushes and saves the last commit / localsave online
+aliases: upload (main)
+
+### pull
+Pulls the latest changes from online
+aliases: download (main)
+
+### sync
+pull followed by push
 
 ## Features
-
+- `Version Control:` Users can save the current state of their tabs as a "commit" graph.
+- `Encryption:` Tab data is encrypted using the Web Crypto API and argon2-browser to ensure user privacy and security.
+- `Storage Migrations:` The extension supports storage migrations to handle changes in the data schema over time, ensuring that users' tab data remains intact and accessible.
+- `Diff Based Storage:` Only changes (diffs) between tab states are stored, optimizing storage usage and performance. Also potentially reducing the amount of data sent to the server if a cloud sync feature is implemented in the future.
 
 ## Contributing
 
-All source code is located in in the `src` folder.
+All source code is located in in the `src` folder. Documentatino about how to contribute to this boilerplate is available in the `documentation` folder.
 
 ## Webpack auto-reload and HRM
 
