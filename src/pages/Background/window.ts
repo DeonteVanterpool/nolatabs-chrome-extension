@@ -7,7 +7,7 @@ export class BrowserWindow {
     }
     public static async createTabs(tabs: Tab[]): Promise<void> {
         tabs.forEach(async (t) => {
-            await chrome.tabs.create({url: t.url});
+            await chrome.tabs.create({url: t.url, active: false});
         });
     }
     public static async getUnpinnedTabs(): Promise<Tab[]> {
