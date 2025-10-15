@@ -29,7 +29,7 @@ const Frontend: React.FC<Props> = ({onLogin, renderSignup}: Props) => {
         <h2>NolaTabs</h2>
         <form onSubmit={handleLogin}>
             <label>Password:
-                <input type="password" onChange={handlePasswordChange}></input>
+                <input autoFocus={true} type="password" onChange={handlePasswordChange}></input>
             </label>
             <button type="submit">Log In</button>
         </form>
