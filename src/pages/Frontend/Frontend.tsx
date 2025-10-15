@@ -18,7 +18,7 @@ const Frontend: React.FC<Props> = ({}: Props) => {
 
     let userService = new UserService(new UserRepository(chrome.storage.local));
     async function userExists() {
-        if (await userService.get() !== null) {
+        if (!user && await userService.get() !== null) {
             setCurrentPage("login");
         }
     }
