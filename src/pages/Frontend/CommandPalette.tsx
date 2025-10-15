@@ -54,9 +54,11 @@ const CommandPalette: React.FC<Props> = ({commandHandler, commands, repoNames}: 
     let [textInput, setTextInput] = useState<string>("");
     let [suggestions, setSuggestions] = useState<string[]>([]);
     const suggest = (dtype: DataType, text: string): string[] => {
+        console.log(repoNames);
         if (dtype === "String") {
             return [];
         } else if (dtype === "RepositoryName") {
+            console.log(repoNames.filter((n) => n.startsWith(text)));
             return repoNames.filter((n) => n.startsWith(text));
         } else {
             return [];
@@ -65,14 +67,16 @@ const CommandPalette: React.FC<Props> = ({commandHandler, commands, repoNames}: 
     const suggestionHandler = (): string[] => {
         setCommand(splitIgnoringQuotes(textInput));
         if (textInput.split(" ").length <= 1 && (textInput.length === 0 || textInput[0] !== " ")) {
+            console.log("bart");
             setSuggestions(commands.map((c) => c.name).filter((n) => n.startsWith(textInput)));
             return commands.map((c) => c.name).filter((n) => n.startsWith(textInput));
         } else {
             let command = commands.find((o) => o.name === textInput.split(" ")[0]);
+            console.log("hello");
             if (command) {
-                let input = textInput.split(" ");
-                setSuggestions(suggest(command!.args[input.length], input[input.length - 1]));
-                return suggest(command!.args[input.length], input[input.length - 1]);
+                let input = splitIgnoringQuotes(textInput);
+                setSuggestions(suggest(command.args[input.length - 2], input[input.length - 1]));
+                return suggest(command.args[input.length], input[input.length - 1]);
             }
             setSuggestions([]);
             return []; // invalid command
@@ -81,12 +85,10 @@ const CommandPalette: React.FC<Props> = ({commandHandler, commands, repoNames}: 
 
       // Update suggestions whenever textInput changes
     useEffect(() => {
-        const newSuggestions = suggestionHandler();
-        setSuggestions(newSuggestions);
-    }, [textInput, commands, repoNames]);
+    }, [textInput, commands, repoNames, suggestions]);
 
     return <div className="CommandPalette">
-        <input type="text" className="command-palette" onKeyDown={(e) => {
+        <input value={textInput} type="text" className="command-palette" onKeyDown={(e) => {
             if (e.key === "Enter") {
                 commandHandler(command);
                 setTextInput("");
@@ -96,9 +98,10 @@ const CommandPalette: React.FC<Props> = ({commandHandler, commands, repoNames}: 
             }
         }} onChange={(e) => {
             setTextInput((e.target as HTMLInputElement).value);
+            textInput = (e.target as HTMLInputElement).value; // the input is used in suggestionHandler, so we need to update it manually so it isn't using the old value
             suggestions = suggestionHandler();
         }
-        } value={textInput} />
+        } />
 
         { /* This span element will have the same text as the input, but be invisible so that we can track the position of certain tokens */}
         <span id="mirror" style={{visibility: "hidden", position: "absolute", whiteSpace: "pre"}}></span>

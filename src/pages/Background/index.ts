@@ -7,8 +7,12 @@ import {openWelcomePage} from "./services";
 import {BrowserWindow} from "./window";
 
 chrome.runtime.onInstalled.addListener(async () => {
-    await openWelcomePage()
+    await openWelcomePage();
 });
+
+chrome.windows.onCreated.addListener(async () => {
+    await openWelcomePage();
+})
 
 chrome.runtime.onMessage.addListener(async (message: Message, sender, sendResponse) => {
     if (message.action === "commit") {
