@@ -4,6 +4,8 @@ import Signup from './Signup';
 import {User} from '../models/user';
 import Login from './Login';
 import Main from './Main';
+import {UserService} from '../services/user';
+import {UserRepository} from '../repository/user';
 
 type page = "signup" | "login" | "main"
 
@@ -13,6 +15,17 @@ const Frontend: React.FC<Props> = ({}: Props) => {
     const [user, setCurrentUser] = useState<User | null>(null);
     // return <div className="FrontendContainer">{user ? "signup" : "login"} Page</div>;
     const [currentPage, setCurrentPage] = useState(user ? "login" : "signup");
+
+    let userService = new UserService(new UserRepository(chrome.storage.local));
+    async function userExists() {
+        if (await userService.get() !== null) {
+            setCurrentPage("login");
+        }
+    }
+
+    useEffect(() => {
+        userExists();
+    });
 
     function handleSignup(user: User) {
         setCurrentPage("main");
