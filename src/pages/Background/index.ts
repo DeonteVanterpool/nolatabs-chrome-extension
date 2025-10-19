@@ -10,8 +10,10 @@ chrome.runtime.onInstalled.addListener(async () => {
     await openWelcomePage();
 });
 
-chrome.windows.onCreated.addListener(async () => {
-    await openWelcomePage();
+chrome.windows.onCreated.addListener(async (window) => {
+    if (window.type === "normal") {
+        await openWelcomePage();
+    }
 })
 
 chrome.runtime.onMessage.addListener(async (message: Message, sender, sendResponse) => {
