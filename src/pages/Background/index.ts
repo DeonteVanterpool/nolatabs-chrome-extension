@@ -11,7 +11,7 @@ chrome.runtime.onInstalled.addListener(async () => {
 });
 
 chrome.windows.onCreated.addListener(async (window) => {
-    if (window.type === "normal") {
+    if (window.type === "normal") { // don't open th epage if the new window is a popup
         await openWelcomePage();
     }
 })
