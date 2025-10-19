@@ -88,7 +88,7 @@ const CommandPalette: React.FC<Props> = ({commandHandler, commands, repoNames}: 
     }, [textInput, commands, repoNames, suggestions]);
 
     return <div className="CommandPalette">
-        <input value={textInput} type="text" className="command-palette" onKeyDown={(e) => {
+        <input value={textInput} autoFocus={true} type="text" className="command-palette" onKeyDown={(e) => {
             if (e.key === "Enter") {
                 commandHandler(command);
                 setTextInput("");

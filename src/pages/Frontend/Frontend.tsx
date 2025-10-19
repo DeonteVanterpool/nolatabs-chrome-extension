@@ -1,4 +1,5 @@
 import React, {useEffect, useState} from 'react';
+import init, { greet } from '../../wasm/mls/pkg/mls';
 import './Frontend.css';
 import Signup from './Signup';
 import {User} from '../models/user';
@@ -43,6 +44,14 @@ const Frontend: React.FC<Props> = ({}: Props) => {
     function renderSignup() {
         setCurrentPage("signup");
     }
+
+    async function loadWasm() {
+        await init('./mls_bg.wasm');  // Path relative to extension root
+        // Now you can use your Rust functions
+        greet("deonte")
+    }
+
+    loadWasm();
     switch (currentPage) {
         case "signup":
             return (<>

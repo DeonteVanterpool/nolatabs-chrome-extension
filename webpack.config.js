@@ -211,6 +211,15 @@ var options = {
         new CopyWebpackPlugin({
             patterns: [
                 {
+                    from: 'src/wasm/mls/pkg/mls_bg.wasm',
+                    to: path.join(__dirname, 'build'),
+                    force: true,
+                },
+            ],
+        }),
+        new CopyWebpackPlugin({
+            patterns: [
+                {
                     from: 'src/assets/img/icon-34.png',
                     to: path.join(__dirname, 'build'),
                     force: true,

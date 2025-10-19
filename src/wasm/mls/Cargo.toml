@@ -1,0 +1,11 @@
+[package]
+name = "mls"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+openmls = "0.7.1"
+wasm-bindgen = "0.2.104"

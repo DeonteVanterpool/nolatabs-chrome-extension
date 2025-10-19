@@ -70,58 +70,58 @@ const Main: React.FC<Props> = ({}: Props) => {
         <div className="content">
             {selectedRepo ? selectedRepo.name : "no repo selected"}
             <button onClick={handleCommit}>Commit</button>
-        </div>
-        <CommandPalette commandHandler={async (command: string[]) => {
-            console.log(command);
-            if (command[0] === "mkrepo") {
-                await handleMkRepo(command[1]);
-            } else if (command[0] === "init") {
-                await handleInitRepo(command[1]);
-            } else if (command[0] === "cd") {
-                let repo = repos.find((r) => r.name === command[1]);
-                if (repo) {
-                    await handleOpenRepo(repo);
-                } else {
-                    alert("Repository not found");
-                }
-            } else if (command[0] === "commit") {
-                await handleCommit();
-            } else if (command[0] === "rm") {
-                let repo = repos.find((r) => r.name === command[1]);
-                if (repo) {
-                    await new RepositoryRepository(chrome.storage.local).delete(repo);
-                    setRepos(repos.filter((r) => r.name !== command[1]));
-                    if (selectedRepo?.name === command[1]) {
-                        setSelectedRepo(undefined);
+            <CommandPalette commandHandler={async (command: string[]) => {
+                console.log(command);
+                if (command[0] === "mkrepo") {
+                    await handleMkRepo(command[1]);
+                } else if (command[0] === "init") {
+                    await handleInitRepo(command[1]);
+                } else if (command[0] === "cd") {
+                    let repo = repos.find((r) => r.name === command[1]);
+                    if (repo) {
+                        await handleOpenRepo(repo);
+                    } else {
+                        alert("Repository not found");
+                    }
+                } else if (command[0] === "commit") {
+                    await handleCommit();
+                } else if (command[0] === "rm") {
+                    let repo = repos.find((r) => r.name === command[1]);
+                    if (repo) {
+                        await new RepositoryRepository(chrome.storage.local).delete(repo);
+                        setRepos(repos.filter((r) => r.name !== command[1]));
+                        if (selectedRepo?.name === command[1]) {
+                            setSelectedRepo(undefined);
+                        }
+                    } else {
+                        alert("Repository not found");
                     }
                 } else {
-                    alert("Repository not found");
+                    alert("Unknown command");
                 }
-            } else {
-                alert("Unknown command");
-            }
-        }} commands={[
-            {
-                name: "commit",
-                args: ["String"],
-            },
-            {
-                name: "cd",
-                args: ["RepositoryName"],
-            },
-            {
-                name: "rm",
-                args: ["RepositoryName"],
-            },
-            {
-                name: "init",
-                args: ["String"],
-            },
-            {
-                name: "mkrepo",
-                args: ["String"],
-            }
-        ]} repoNames={repos.map((r) => r.name)} />
+            }} commands={[
+                {
+                    name: "commit",
+                    args: ["String"],
+                },
+                {
+                    name: "cd",
+                    args: ["RepositoryName"],
+                },
+                {
+                    name: "rm",
+                    args: ["RepositoryName"],
+                },
+                {
+                    name: "init",
+                    args: ["String"],
+                },
+                {
+                    name: "mkrepo",
+                    args: ["String"],
+                }
+            ]} repoNames={repos.map((r) => r.name)} />
+        </div>
     </div>;
 };
 
