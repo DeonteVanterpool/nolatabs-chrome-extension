@@ -2,7 +2,8 @@ use lazy_static::lazy_static;
 use openmls::prelude::tls_codec::Serialize as SerializeOpenMLS;
 use openmls::prelude::*;
 use openmls::treesync::RatchetTree;
-use openmls_basic_credential::SignatureKeyPair;
+u,
+message: &u8se openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use std::collections::HashMap;
 
@@ -142,8 +143,16 @@ pub fn export_ratchet_tree(val: JsValue) -> Result<JsValue, JsError> {
 #[wasm_bindgen]
 pub fn accept_invitation(val: JsValue) -> Result<JsValue, JsError> {
     let inv: AcceptInvitation = serde_wasm_bindgen::from_value(val)?;
-    let (mls_message_in, _) = MlsMessageIn::tls_deserialize_bytes(&mut inv.welcome.as_slice())
+    let (mls_message_in, remaining_bytes) = MlsMessageIn::tls_deserialize_bytes(&mut inv.welcome.as_slice())
         .expect("An unexpected error occurred.");
+
+       // Check if we consumed all bytes
+    if !remaining_bytes.is_empty() {
+        return Err(JsError::new(&format!(
+            "Extra bytes after deserialization: {} bytes remaining", 
+            remaining_bytes.len()
+        )));
+    }
 
     // ... and inspect the message.
     let welcome = match mls_message_in.extract() {
@@ -167,4 +176,42 @@ pub fn accept_invitation(val: JsValue) -> Result<JsValue, JsError> {
         .expect("Error creating the group from the staged join");
 
     return Ok(serde_wasm_bindgen::to_value(group.group_id())?);
+}
+
+// message should be passed as an argument
+#[wasm_bindgen]
+pub fn decrypt_message(val: JsValue) -> Result<JsValue, JsError> {
+    let mut message: MessageInfo = serde_wasm_bindgen::from_value(val)?;
+    let mut group = get_group(&message.group_id).ok_or_else(|| JsError::new("Error finding group"))?;
+
+    let (mls_message_in, _) = MlsMessageIn::tls_deserialize_bytes(&mut message.message.as_mut())
+        .expect("An unexpected error occurred.");
+
+    // ... and inspect the message.
+    let message = group.process_message(&*PROVIDER, mls_message_in.extract())?;
+    return Ok(serde_wasm_bindgen::to_value(&message)?);
+}
+
+#[wasm_bindgen]
+#[derive(Serialize)]
+pub struct MessageInfo {
+    group_id: GroupId,
+    message: Vec<u8>
+}
+
+// message should be passed as an argument
+#[wasm_bindgen]
+pub fn encrypt_message(val: JsValue) -> Result<JsValue, JsError> {
+    let inv: Invitation = serde_wasm_bindgen::from_value(val)?;
+    // ... and invites Maxim.
+    // The key package has to be retrieved from Maxim in some way. Most likely
+    // via a server storing key packages for users.
+    let mut group = get_group(&inv.group_id).ok_or_else(|| JsError::new("Error finding group"))?;
+    let mls_message_out = group
+        .create_message(&*PROVIDER, &inv.creds.skp, core::slice::from_ref(&inv.message))
+        .expect("Could not add members.");
+
+    Ok(serde_wasm_bindgen::to_value(
+        &mls_message_out.tls_serialize_detached()?,
+    )?)
 }
