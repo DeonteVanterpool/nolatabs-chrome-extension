@@ -140,7 +140,7 @@ pub fn export_ratchet_tree(val: JsValue) -> Result<JsValue, JsError> {
 }
 
 #[wasm_bindgen]
-pub fn accept_invatation(val: JsValue) -> Result<JsValue, JsError> {
+pub fn accept_invitation(val: JsValue) -> Result<JsValue, JsError> {
     let inv: AcceptInvitation = serde_wasm_bindgen::from_value(val)?;
     let (mls_message_in, _) = MlsMessageIn::tls_deserialize_bytes(&mut inv.welcome.as_slice())
         .expect("An unexpected error occurred.");
