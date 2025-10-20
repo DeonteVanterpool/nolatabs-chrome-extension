@@ -133,6 +133,13 @@ pub struct AcceptInvitation {
 }
 
 #[wasm_bindgen]
+pub fn export_ratchet_tree(val: JsValue) -> Result<JsValue, JsError> {
+    let group_id: GroupId = serde_wasm_bindgen::from_value(val)?;
+    let group = get_group(&group_id).ok_or_else(|| JsError::new("Error finding group"))?;
+    return Ok(serde_wasm_bindgen::to_value(&group.export_ratchet_tree())?);
+}
+
+#[wasm_bindgen]
 pub fn accept_invatation(val: JsValue) -> Result<JsValue, JsError> {
     let inv: AcceptInvitation = serde_wasm_bindgen::from_value(val)?;
     let (mls_message_in, _) = MlsMessageIn::tls_deserialize_bytes(&mut inv.welcome.as_slice())
