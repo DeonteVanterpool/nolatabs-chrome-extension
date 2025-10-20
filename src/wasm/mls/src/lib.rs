@@ -181,15 +181,15 @@ pub fn accept_invitation(val: JsValue) -> Result<JsValue, JsError> {
 // message should be passed as an argument
 #[wasm_bindgen]
 pub fn decrypt_message(val: JsValue) -> Result<JsValue, JsError> {
-    let mut message: MessageInfo = serde_wasm_bindgen::from_value(val)?;
-    let mut group = get_group(&message.group_id).ok_or_else(|| JsError::new("Error finding group"))?;
+    let mut info: MessageInfo = serde_wasm_bindgen::from_value(val)?;
+    let mut group = get_group(&info.group_id).ok_or_else(|| JsError::new("Error finding group"))?;
 
-    let (mls_message_in, _) = MlsMessageIn::tls_deserialize_bytes(&mut message.message.as_mut())
+    let (mls_message_in, _) = MlsMessageIn::tls_deserialize_bytes(&mut info.message.as_mut())
         .expect("An unexpected error occurred.");
 
     // ... and inspect the message.
-    let message = group.process_message(&*PROVIDER, mls_message_in.extract())?;
-    return Ok(serde_wasm_bindgen::to_value(&message)?);
+    let message_processed = group.process_message(&*PROVIDER, mls_message_in.extract())?;
+    return Ok(serde_wasm_bindgen::to_value(&message_processed)?);
 }
 
 #[wasm_bindgen]
@@ -199,16 +199,24 @@ pub struct MessageInfo {
     message: Vec<u8>
 }
 
+#[wasm_bindgen]
+#[derive(Serialize)]
+pub struct MessageEncryptInfo {
+    group_id: GroupId,
+    message: Vec<u8>,
+    creds: Credentials
+}
+
 // message should be passed as an argument
 #[wasm_bindgen]
 pub fn encrypt_message(val: JsValue) -> Result<JsValue, JsError> {
-    let inv: Invitation = serde_wasm_bindgen::from_value(val)?;
+    let info: MessageEncryptInfo = serde_wasm_bindgen::from_value(val)?;
     // ... and invites Maxim.
     // The key package has to be retrieved from Maxim in some way. Most likely
     // via a server storing key packages for users.
-    let mut group = get_group(&inv.group_id).ok_or_else(|| JsError::new("Error finding group"))?;
+    let mut group = get_group(&info.group_id).ok_or_else(|| JsError::new("Error finding group"))?;
     let mls_message_out = group
-        .create_message(&*PROVIDER, &inv.creds.skp, core::slice::from_ref(&inv.message))
+        .create_message(&*PROVIDER, &info.creds.skp, core::slice::from_ref(info.message))
         .expect("Could not add members.");
 
     Ok(serde_wasm_bindgen::to_value(
