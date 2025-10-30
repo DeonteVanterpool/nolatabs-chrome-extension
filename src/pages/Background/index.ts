@@ -27,6 +27,7 @@ chrome.runtime.onMessage.addListener(async (message: Message, sender, sendRespon
         let commits = await CommitService.commit(commitGraph, "me", options.message, tabs, (CommitService.getTips(commitGraph)).map((c) => c.hash));
 
         await commitRepo.sync(options.repo, commits.graph);
+        await BrowserWindow.addAllTabsToGroup(options.repo.name);
         return commits.commit;
     } else if (message.action === "cd") {
         let options = message.options as CDMessageOptions;
@@ -35,6 +36,7 @@ chrome.runtime.onMessage.addListener(async (message: Message, sender, sendRespon
 
         await BrowserWindow.clearUnpinnedTabs();
         await BrowserWindow.createTabs(CommitService.buildLatestSnapshot(commits));
+        await BrowserWindow.addAllTabsToGroup(options.repo.name);
     }
 });
 

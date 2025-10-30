@@ -2,8 +2,7 @@ use lazy_static::lazy_static;
 use openmls::prelude::tls_codec::Serialize as SerializeOpenMLS;
 use openmls::prelude::*;
 use openmls::treesync::RatchetTree;
-u,
-message: &u8se openmls_basic_credential::SignatureKeyPair;
+use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use std::collections::HashMap;
 
@@ -188,19 +187,29 @@ pub fn decrypt_message(val: JsValue) -> Result<JsValue, JsError> {
         .expect("An unexpected error occurred.");
 
     // ... and inspect the message.
-    let message_processed = group.process_message(&*PROVIDER, mls_message_in.extract())?;
-    return Ok(serde_wasm_bindgen::to_value(&message_processed)?);
+    let message_processed = match mls_message_in.extract() {
+        MlsMessageBodyIn::PublicMessage(message) => group.process_message(&*PROVIDER, message)?,
+        MlsMessageBodyIn::PrivateMessage(message) => group.process_message(&*PROVIDER, message)?,
+        _ => panic!("Error"),
+    };
+
+    let message = match message_processed.into_content() {
+        ProcessedMessageContent::ApplicationMessage(message) => message.into_bytes(),
+        _ => panic!("Error"),
+    };
+
+    return Ok(serde_wasm_bindgen::to_value(&message)?);
 }
 
 #[wasm_bindgen]
-#[derive(Serialize)]
+#[derive(Deserialize)]
 pub struct MessageInfo {
     group_id: GroupId,
     message: Vec<u8>
 }
 
 #[wasm_bindgen]
-#[derive(Serialize)]
+#[derive(Deserialize)]
 pub struct MessageEncryptInfo {
     group_id: GroupId,
     message: Vec<u8>,
@@ -216,7 +225,7 @@ pub fn encrypt_message(val: JsValue) -> Result<JsValue, JsError> {
     // via a server storing key packages for users.
     let mut group = get_group(&info.group_id).ok_or_else(|| JsError::new("Error finding group"))?;
     let mls_message_out = group
-        .create_message(&*PROVIDER, &info.creds.skp, core::slice::from_ref(info.message))
+        .create_message(&*PROVIDER, &info.creds.skp, &info.message)
         .expect("Could not add members.");
 
     Ok(serde_wasm_bindgen::to_value(
