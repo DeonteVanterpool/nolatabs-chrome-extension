@@ -1,15 +1,22 @@
 import React, {ChangeEvent, FormEvent, useState} from 'react';
-import './Frontend.css';
-import {UserService} from '../services/user';
-import {UserRepository} from '../repository/user';
-import {User} from '../models/user';
+import '../Frontend.css';
+import {UserService} from '../../services/user';
+import {User} from '../../models/user';
 
-interface Props {
-    onLogin: (user: User) => void;
-    renderSignup: () => void;
+type data = string | number | boolean
+
+type FormInfo = {
+    [key: string]: data
 }
 
-const Frontend: React.FC<Props> = ({onLogin, renderSignup}: Props) => {
+interface Props {
+    onSubmit: (info: FormInfo) => void;
+}
+
+const Form: React.FC<Props> = ({onSubmit}: Props) => {
+    throw Error("Unimplemented!");
+
+    /*
     const [password, setPassword] = useState('');
 
     const handlePasswordChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -18,7 +25,6 @@ const Frontend: React.FC<Props> = ({onLogin, renderSignup}: Props) => {
 
     const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        let userService = new UserService(new UserRepository(chrome.storage.local));
         if (await userService.authenticate(password) === true) {
             onLogin((await userService.get())!);
         }
@@ -35,6 +41,7 @@ const Frontend: React.FC<Props> = ({onLogin, renderSignup}: Props) => {
         </form>
         Need an account? <button onClick={renderSignup}>Sign Up</button>
     </div>;
+     */
 };
 
-export default Frontend;
+export default Form;

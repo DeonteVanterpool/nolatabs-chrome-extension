@@ -1,8 +1,5 @@
 import React, {ChangeEvent, FormEvent, useEffect, useState} from 'react';
-import './Frontend.css';
-import {UserService} from '../services/user';
-import {UserRepository} from '../repository/user';
-import {User} from '../models/user';
+import '../Frontend.css';
 
 interface Props {
     commandHandler: (command: string[]) => void;

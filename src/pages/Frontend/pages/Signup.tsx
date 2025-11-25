@@ -1,29 +1,27 @@
 import React, {ChangeEvent, FormEvent, useState} from 'react';
-import './Frontend.css';
-import {UserService} from '../services/user';
-import {UserRepository} from '../repository/user';
-import {User} from '../models/user';
+import '../Frontend.css';
+import {UserService} from '../../services/user';
+import {User} from '../../models/user';
 
 interface Props {
-    onSignup: (user: User) => void;
-    renderLogin: () => void;
+    handleSignup: (user: User) => void;
+    handleRenderLoginPage: () => void;
+    userService: UserService;
 }
 
-const Frontend: React.FC<Props> = ({ onSignup: onSignUp, renderLogin }: Props) => {
+const Frontend: React.FC<Props> = ({ handleSignup: onSignUp, handleRenderLoginPage: renderLogin, userService}: Props) => {
     const [name, setName] = useState('');
     const [password, setPassword] = useState('');
 
     const handleNameChange = (e: ChangeEvent<HTMLInputElement>) => {
         setName(e.target.value);
     };
-
     const handlePasswordChange = (e: ChangeEvent<HTMLInputElement>) => {
         setPassword(e.target.value);
     };
 
     const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        let userService = new UserService(new UserRepository(chrome.storage.local));
         userService.signup(name, password);
         onSignUp((await userService.get())!);
     }

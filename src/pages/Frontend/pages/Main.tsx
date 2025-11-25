@@ -1,12 +1,10 @@
-import React, {ChangeEvent, FormEvent, useEffect, useState} from 'react';
-import './Frontend.css';
-import Sidebar from './Sidebar';
-import {RepositoryService} from '../services/repository';
-import {RepositoryRepository} from '../repository/repository';
-import {Repository} from '../models/repository';
-import {CDMessage, CommitMessage} from '../models/messages';
-import {CommitRepository} from '../repository/commit';
-import CommandPalette from './CommandPalette';
+import React, {useEffect, useState} from 'react';
+import '../Frontend.css';
+import {RepositoryRepository} from '../../repository/repository';
+import {Repository} from '../../models/repository';
+import {CDMessage, CommitMessage} from '../../models/messages';
+import CommandPalette from '../components/CommandPalette';
+import Sidebar from '../components/Sidebar';
 
 interface Props {
 }
@@ -72,7 +70,7 @@ const Main: React.FC<Props> = ({}: Props) => {
             <button onClick={handleCommit}>Commit</button>
             <CommandPalette commandHandler={async (command: string[]) => {
                 console.log(command);
-                if (command[0] === "mkrepo") {
+                if (command[0] === "mkdir") {
                     await handleMkRepo(command[1]);
                 } else if (command[0] === "init") {
                     await handleInitRepo(command[1]);
@@ -117,7 +115,7 @@ const Main: React.FC<Props> = ({}: Props) => {
                     args: ["String"],
                 },
                 {
-                    name: "mkrepo",
+                    name: "mkdir",
                     args: ["String"],
                 }
             ]} repoNames={repos.map((r) => r.name)} />

@@ -1,6 +1,6 @@
 import React, {ChangeEvent, FormEvent, useState} from 'react';
-import './Frontend.css';
-import {Repository} from '../models/repository';
+import '../Frontend.css';
+import {Repository} from '../../models/repository';
 interface Props {
     repos: Repository[];
     handleNewRepo: (name: string) => void;
