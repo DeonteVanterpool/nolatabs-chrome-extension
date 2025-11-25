@@ -34,7 +34,7 @@ aliases: open (main)
 Creates a new repository from the current window's tabs
 aliases: initialize (main)
 
-### mkrepo
+### mkdir
 Clear tabs and create new repository in current window
 aliases: new (main)
 
