@@ -23,6 +23,8 @@ pub struct Credentials {
     skp: SignatureKeyPair,
 }
 
+// Get the provider storage as a JS value. DO NOT PERIST OLD VERSIONS OF THE STORAGE. THIS BREAKS
+// THE OPENMLS SECURITY MODEL.
 #[wasm_bindgen]
 pub fn get_provider_storage() -> Result<JsValue, JsError> {
     let storage = &*PROVIDER.storage().values.read().unwrap();
@@ -203,7 +205,7 @@ pub fn accept_invitation(val: JsValue) -> Result<JsValue, JsError> {
 #[derive(Deserialize, Serialize)]
 pub struct ProcessedMessage {
     kind: String,
-    content: HashMap<String, Vec<u8>>,
+    pub content: HashMap<String, Vec<u8>>,
 }
 
 impl ProcessedMessage {
