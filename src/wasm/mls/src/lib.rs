@@ -1,7 +1,6 @@
 use lazy_static::lazy_static;
 use openmls::prelude::tls_codec::Serialize as SerializeOpenMLS;
 use openmls::prelude::*;
-use openmls::treesync::RatchetTree;
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use std::collections::HashMap;
@@ -26,19 +25,14 @@ pub struct Credentials {
 
 #[wasm_bindgen]
 pub fn get_provider_storage() -> Result<JsValue, JsError> {
-    return Ok(serde_wasm_bindgen::to_value(
-        &*OpenMlsRustCrypto::default()
-            .storage()
-            .values
-            .read()
-            .unwrap(),
-    )?);
+    let storage = &*PROVIDER.storage().values.read().unwrap();
+    return Ok(serde_wasm_bindgen::to_value(storage)?);
 }
 
 #[wasm_bindgen]
 pub fn load_provider_storage(val: JsValue) -> Result<(), JsError> {
-    let storage: HashMap<Vec<u8>, Vec<u8>> = serde_wasm_bindgen::from_value(val)?;
-    let mut w = PROVIDER.storage().values.write().unwrap();
+  let storage: HashMap<Vec<u8>, Vec<u8>> = serde_wasm_bindgen::from_value(val)?;
+    let mut w = PROVIDER.storage().values.write().unwrap(); // ✅ Correct reference
     *w = storage;
     Ok(())
 }
@@ -95,15 +89,25 @@ pub fn create_group(val: JsValue) -> Result<JsValue, JsError> {
 }
 
 fn get_group(id: &GroupId) -> Option<MlsGroup> {
-    MlsGroup::load(PROVIDER.storage(), id).ok()?
+    MlsGroup::load(&*PROVIDER.storage(), id).ok()?
 }
 
 #[wasm_bindgen]
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 pub struct Invitation {
     creds: Credentials,
     kpg: KeyPackage,
     group_id: GroupId,
+}
+
+impl Invitation {
+    pub fn new(creds: Credentials, kpg: KeyPackage, group_id: GroupId) -> Self {
+        Invitation {
+            creds,
+            kpg,
+            group_id,
+        }
+    }
 }
 
 // returns invitation message (Vec<u8>)
@@ -126,29 +130,47 @@ pub fn invite(val: JsValue) -> Result<JsValue, JsError> {
 }
 
 #[wasm_bindgen]
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 pub struct AcceptInvitation {
-    tree: RatchetTree,
+    tree: Vec<u8>,
     welcome: Vec<u8>,
+}
+
+impl AcceptInvitation {
+    pub fn new(tree: Vec<u8>, welcome: Vec<u8>) -> Self {
+        AcceptInvitation { tree, welcome }
+    }
 }
 
 #[wasm_bindgen]
 pub fn export_ratchet_tree(val: JsValue) -> Result<JsValue, JsError> {
     let group_id: GroupId = serde_wasm_bindgen::from_value(val)?;
     let group = get_group(&group_id).ok_or_else(|| JsError::new("Error finding group"))?;
-    return Ok(serde_wasm_bindgen::to_value(&group.export_ratchet_tree())?);
+
+    // Export the ratchet tree and TLS serialize it to bytes
+    let tree = group.export_ratchet_tree();
+    let tree_bytes = tree
+        .tls_serialize_detached()
+        .map_err(|e| JsError::new(&format!("Failed to serialize ratchet tree: {:?}", e)))?;
+
+    Ok(serde_wasm_bindgen::to_value(&tree_bytes)?)
 }
 
 #[wasm_bindgen]
 pub fn accept_invitation(val: JsValue) -> Result<JsValue, JsError> {
     let inv: AcceptInvitation = serde_wasm_bindgen::from_value(val)?;
-    let (mls_message_in, remaining_bytes) = MlsMessageIn::tls_deserialize_bytes(&mut inv.welcome.as_slice())
-        .expect("An unexpected error occurred.");
+    let (mls_message_in, remaining_bytes) =
+        MlsMessageIn::tls_deserialize_bytes(&mut inv.welcome.as_slice())
+            .expect("An unexpected error occurred.");
 
-       // Check if we consumed all bytes
+    // Deserialize the ratchet tree from TLS-serialized bytes
+    let tree = tls_codec::Deserialize::tls_deserialize(&mut inv.tree.as_slice())
+        .map_err(|e| JsError::new(&format!("Failed to deserialize ratchet tree: {:?}", e)))?;
+
+    // Check if we consumed all bytes
     if !remaining_bytes.is_empty() {
         return Err(JsError::new(&format!(
-            "Extra bytes after deserialization: {} bytes remaining", 
+            "Extra bytes after deserialization: {} bytes remaining",
             remaining_bytes.len()
         )));
     }
@@ -166,7 +188,7 @@ pub fn accept_invitation(val: JsValue) -> Result<JsValue, JsError> {
         welcome,
         // The public tree is needed and transferred out of band.
         // It is also possible to use the [`RatchetTreeExtension`]
-        Some(inv.tree.into()),
+        Some(tree),
     )
     .expect("Error creating a staged join from Welcome");
 
@@ -202,18 +224,34 @@ pub fn decrypt_message(val: JsValue) -> Result<JsValue, JsError> {
 }
 
 #[wasm_bindgen]
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 pub struct MessageInfo {
     group_id: GroupId,
-    message: Vec<u8>
+    message: Vec<u8>,
+}
+
+impl MessageInfo {
+    pub fn new(group_id: GroupId, message: Vec<u8>) -> Self {
+        MessageInfo { group_id, message }
+    }
 }
 
 #[wasm_bindgen]
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 pub struct MessageEncryptInfo {
     group_id: GroupId,
     message: Vec<u8>,
-    creds: Credentials
+    creds: Credentials,
+}
+
+impl MessageEncryptInfo {
+    pub fn new(group_id: GroupId, message: Vec<u8>, creds: Credentials) -> Self {
+        MessageEncryptInfo {
+            group_id,
+            message,
+            creds,
+        }
+    }
 }
 
 // message should be passed as an argument
@@ -226,7 +264,7 @@ pub fn encrypt_message(val: JsValue) -> Result<JsValue, JsError> {
     let mut group = get_group(&info.group_id).ok_or_else(|| JsError::new("Error finding group"))?;
     let mls_message_out = group
         .create_message(&*PROVIDER, &info.creds.skp, &info.message)
-        .expect("Could not add members.");
+        .expect("Could not create message");
 
     Ok(serde_wasm_bindgen::to_value(
         &mls_message_out.tls_serialize_detached()?,
