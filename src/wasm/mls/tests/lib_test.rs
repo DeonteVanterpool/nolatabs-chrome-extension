@@ -73,6 +73,7 @@ fn send_message() {
     let receiver_provider_storage: HashMap<Vec<u8>, Vec<u8>> =
         serde_wasm_bindgen::from_value(mls::get_provider_storage().unwrap()).unwrap();
 
+    // SENDER SIDE:
     // Sender creates the group
     let group = create_group(sender_creds.clone()).unwrap();
     let group_id: GroupId = serde_wasm_bindgen::from_value(group.clone()).unwrap();
@@ -91,14 +92,7 @@ fn send_message() {
         serde_wasm_bindgen::from_value(invite(invitation_js).unwrap()).unwrap();
     let tree = export_ratchet_tree(group.clone().into()).unwrap();
 
-    // Update sender's provider storage after invitation
-    let sender_provider_storage: HashMap<Vec<u8>, Vec<u8>> =
-        serde_wasm_bindgen::from_value(mls::get_provider_storage().unwrap()).unwrap();
-
-    // SENDER SIDE: Encrypt message
-    mls::load_provider_storage(serde_wasm_bindgen::to_value(&sender_provider_storage).unwrap())
-        .unwrap();
-
+    // Sender encrypts a message for the group
     let encrypt_info = mls::MessageEncryptInfo::new(
         group_id.clone(),
         msg.as_bytes().to_vec(),
@@ -110,7 +104,8 @@ fn send_message() {
     let encrypted_bytes: Vec<u8> =
         serde_wasm_bindgen::from_value(encrypted_message.clone()).unwrap();
 
-    // RECEIVER SIDE: Accept invitation and decrypt message
+    // RECEIVER SIDE: 
+    // Accept invitation and decrypt message
     mls::load_provider_storage(serde_wasm_bindgen::to_value(&receiver_provider_storage).unwrap())
         .unwrap();
 
@@ -132,5 +127,5 @@ fn send_message() {
     let decrypted_message = mls::decrypt_message(message_info_js).unwrap();
     let decrypted_str: Vec<u8> = serde_wasm_bindgen::from_value(decrypted_message).unwrap();
 
-    assert_eq!(msg.as_bytes().to_vec(), decrypted_str);
+    assert_eq!(b"hello", decrypted_str.as_slice());
 }
