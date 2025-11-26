@@ -31,8 +31,8 @@ pub fn get_provider_storage() -> Result<JsValue, JsError> {
 
 #[wasm_bindgen]
 pub fn load_provider_storage(val: JsValue) -> Result<(), JsError> {
-  let storage: HashMap<Vec<u8>, Vec<u8>> = serde_wasm_bindgen::from_value(val)?;
-    let mut w = PROVIDER.storage().values.write().unwrap(); // ✅ Correct reference
+    let storage: HashMap<Vec<u8>, Vec<u8>> = serde_wasm_bindgen::from_value(val)?;
+    let mut w = PROVIDER.storage().values.write().unwrap();
     *w = storage;
     Ok(())
 }
@@ -164,7 +164,7 @@ pub fn accept_invitation(val: JsValue) -> Result<JsValue, JsError> {
             .expect("An unexpected error occurred.");
 
     // Deserialize the ratchet tree from TLS-serialized bytes
-    let tree = tls_codec::Deserialize::tls_deserialize(&mut inv.tree.as_slice())
+    let tree: RatchetTreeIn = tls_codec::Deserialize::tls_deserialize(&mut inv.tree.as_slice())
         .map_err(|e| JsError::new(&format!("Failed to deserialize ratchet tree: {:?}", e)))?;
 
     // Check if we consumed all bytes
@@ -175,7 +175,7 @@ pub fn accept_invitation(val: JsValue) -> Result<JsValue, JsError> {
         )));
     }
 
-    // ... and inspect the message.
+    // and inspect the message.
     let welcome = match mls_message_in.extract() {
         MlsMessageBodyIn::Welcome(welcome) => welcome,
         // We know it's a welcome message, so we ignore all other cases.
@@ -199,9 +199,28 @@ pub fn accept_invitation(val: JsValue) -> Result<JsValue, JsError> {
     return Ok(serde_wasm_bindgen::to_value(group.group_id())?);
 }
 
+#[wasm_bindgen]
+#[derive(Deserialize, Serialize)]
+pub struct ProcessedMessage {
+    kind: String,
+    content: HashMap<String, Vec<u8>>,
+}
+
+impl ProcessedMessage {
+    pub fn new(kind: String, content: HashMap<String, Vec<u8>>) -> Self {
+        ProcessedMessage { kind, content }
+    }
+    pub fn get_content(&self, key: &str) -> Option<&Vec<u8>> {
+        self.content.get(key)
+    }
+    pub fn get_kind(&self) -> &str {
+        &self.kind
+    }
+}
+
 // message should be passed as an argument
 #[wasm_bindgen]
-pub fn decrypt_message(val: JsValue) -> Result<JsValue, JsError> {
+pub fn process_message(val: JsValue) -> Result<JsValue, JsError> {
     let mut info: MessageInfo = serde_wasm_bindgen::from_value(val)?;
     let mut group = get_group(&info.group_id).ok_or_else(|| JsError::new("Error finding group"))?;
 
@@ -215,8 +234,17 @@ pub fn decrypt_message(val: JsValue) -> Result<JsValue, JsError> {
         _ => panic!("Error"),
     };
 
-    let message = match message_processed.into_content() {
-        ProcessedMessageContent::ApplicationMessage(message) => message.into_bytes(),
+    let message: ProcessedMessage = match message_processed.into_content() {
+        ProcessedMessageContent::ApplicationMessage(message) => {
+            let mut content = HashMap::new();
+            content.insert("message".to_string(), message.into_bytes());
+            ProcessedMessage::new("ApplicationMessage".to_string(), content)
+        }
+        ProcessedMessageContent::StagedCommitMessage(staged_commit) => {
+            group.merge_staged_commit(&*PROVIDER, *staged_commit)?;
+            let content = HashMap::new();
+            ProcessedMessage::new("StagedCommitMessage".to_string(), content)
+        }
         _ => panic!("Error"),
     };
 

@@ -1,6 +1,5 @@
 use mls::{
-    Invitation, create_group, encrypt_message, export_ratchet_tree, generate_credential_with_key,
-    generate_key_package, invite,
+    Invitation, ProcessedMessage, create_group, encrypt_message, export_ratchet_tree, generate_credential_with_key, generate_key_package, invite
 };
 use openmls::prelude::KeyPackage;
 use openmls::group::GroupId;
@@ -124,8 +123,10 @@ fn send_message() {
     let message_info = mls::MessageInfo::new(group_after_accept, encrypted_bytes);
 
     let message_info_js = serde_wasm_bindgen::to_value(&message_info).unwrap();
-    let decrypted_message = mls::decrypt_message(message_info_js).unwrap();
-    let decrypted_str: Vec<u8> = serde_wasm_bindgen::from_value(decrypted_message).unwrap();
+    let decrypted_message = mls::process_message(message_info_js).unwrap();
+    let decrypted_message_deserialized: ProcessedMessage = serde_wasm_bindgen::from_value(decrypted_message).unwrap();
 
-    assert_eq!(b"hello", decrypted_str.as_slice());
+    assert_eq!(decrypted_message_deserialized.get_kind(), &String::from("Application"));
+
+    assert_eq!(b"hello", decrypted_message_deserialized.get_content("message").unwrap().as_slice());
 }
