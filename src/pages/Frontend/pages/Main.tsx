@@ -23,6 +23,16 @@ const Main: React.FC<Props> = ({}: Props) => {
             console.log(repos);
         }
         fetchRepos();
+        async function fetchFromUrlParams() {
+            console.log("fetching from url params");
+            let url = window.location.href;
+            let params = new URLSearchParams(url.split("?")[1]);
+            if (params.has("repo-name") && params.has("repo-owner")) {
+                let repo: Repository = { owner: params.get("repo-owner")!, name: params.get("repo-name")! };
+                setSelectedRepo(repo);
+            }
+        }
+        fetchFromUrlParams();
     }, []);
 
     useEffect(() => {
@@ -51,6 +61,11 @@ const Main: React.FC<Props> = ({}: Props) => {
     const handleOpenRepo = async (repo: Repository) => {
         setSelectedRepo(repo);
         await chrome.runtime.sendMessage(CDMessage.new(repo));
+        let url = window.location.href;
+        let params = new URLSearchParams(url.split("?")[1]);
+        params.set("repo-name", repo.name);
+        params.set("repo-owner", repo.owner);
+        window.location.href = url.split("?")[0] + "?" + params.toString();
         return repo;
     }
 
