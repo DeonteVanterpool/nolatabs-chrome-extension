@@ -1,5 +1,6 @@
 import {openWelcomePage} from "./services";
 
+// On command-palette shortcut, open the extension
 chrome.commands.onCommand.addListener((command) => {
     if (command === "command-pallete") {
         chrome.tabs.query({index: 0}, (tab) => {

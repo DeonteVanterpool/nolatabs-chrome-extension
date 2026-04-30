@@ -2,7 +2,7 @@ import React, {useEffect, useState} from 'react';
 import '../Frontend.css';
 import {RepositoryRepository} from '../../repository/repository';
 import {Repository} from '../../models/repository';
-import {CDMessage, CommitMessage} from '../../models/messages';
+import {CDMessage, CommitMessage, MkDirMessage} from '../../models/messages';
 import CommandPalette from '../components/CommandPalette';
 import Sidebar from '../components/Sidebar';
 
@@ -52,12 +52,13 @@ const Main: React.FC<Props> = ({}: Props) => {
     }
 
     const handleMkRepo = async (name: string) => {
-        let repo: Repository = {owner: "me", name: name} // me is the default for the current user
-        await new RepositoryRepository(chrome.storage.local).create(repo);
+        let repo: Repository = {owner: "me", name: name}
+        await chrome.runtime.sendMessage(MkDirMessage.new(name));
         setRepos([...repos, repo]);
         setSelectedRepo(repo);
         await handleOpenRepo(repo);
     }
+
     const handleOpenRepo = async (repo: Repository) => {
         setSelectedRepo(repo);
         await chrome.runtime.sendMessage(CDMessage.new(repo));

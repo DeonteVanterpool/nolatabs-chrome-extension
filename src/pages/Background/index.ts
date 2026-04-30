@@ -1,6 +1,8 @@
 import {Commit} from "../models/commit";
-import {CDMessageOptions, CommitMessageOptions, Message} from "../models/messages";
+import {CDMessageOptions, CommitMessageOptions, LoginMessageOptions, Message, MkDirMessageOptions} from "../models/messages";
+import {Repository} from "../models/repository";
 import {CommitRepository} from "../repository/commit";
+import {RepositoryRepository} from "../repository/repository";
 import {CommitService} from "../services/commit";
 import "./commands";
 import {openWelcomePage} from "./services";
@@ -11,13 +13,29 @@ chrome.runtime.onInstalled.addListener(async () => {
 });
 
 chrome.windows.onCreated.addListener(async (window) => {
-    if (window.type === "normal") { // don't open th epage if the new window is a popup
+    if (window.type === "normal") { // don't open the page if the new window is a popup
         await openWelcomePage();
     }
-})
+});
 
+let password: string | null = null;
+
+// command handler
 chrome.runtime.onMessage.addListener(async (message: Message, sender, sendResponse) => {
-    if (message.action === "commit") {
+    if (message.action === "loggedIn") {
+        console.log("logged in message received");
+        console.log("pw set to ");
+        console.log("pw " + password);
+        console.log("returning " + (password !== null));
+        sendResponse(password !== null);
+        return password !== null;
+    } else if (message.action === "login") {
+            console.log("log in message received");
+            let options = message.options as LoginMessageOptions;
+            password = options.password;
+            console.log("password set to ");
+            console.log("password " + options.password);
+    } else if (message.action === "commit") {
         let options = message.options as CommitMessageOptions;
         let commitRepo = new CommitRepository(chrome.storage.local);
         let commitGraph = await commitRepo.read(options.repo);
@@ -28,15 +46,26 @@ chrome.runtime.onMessage.addListener(async (message: Message, sender, sendRespon
 
         await commitRepo.sync(options.repo, commits.graph);
         await BrowserWindow.addAllTabsToGroup(options.repo.name);
+        sendResponse(commits.commit);
         return commits.commit;
     } else if (message.action === "cd") {
         let options = message.options as CDMessageOptions;
 
-        let commits: Map<string, Commit> = await new CommitRepository(chrome.storage.local).read(options.repo);
+        changeDirectory(options.repo);
+    } else if (message.action === "mkdir") {
+            let options = message.options as MkDirMessageOptions;
+            let repo = options.repo;
 
-        await BrowserWindow.clearUnpinnedTabs();
-        await BrowserWindow.createTabs(CommitService.buildLatestSnapshot(commits));
-        await BrowserWindow.addAllTabsToGroup(options.repo.name);
+            await new RepositoryRepository(chrome.storage.local).create(repo);
+
+            changeDirectory(repo);
     }
 });
 
+async function changeDirectory(repo: Repository) {
+    let commits: Map<string, Commit> = await new CommitRepository(chrome.storage.local).read(repo);
+
+    await BrowserWindow.clearUnpinnedTabs();
+    await BrowserWindow.createTabs(CommitService.buildLatestSnapshot(commits));
+    await BrowserWindow.addAllTabsToGroup(repo.name);
+}

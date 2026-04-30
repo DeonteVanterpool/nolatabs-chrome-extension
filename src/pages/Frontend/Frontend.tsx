@@ -10,10 +10,11 @@ import {RepositoryRepository} from '../repository/repository';
 import Main from './pages/Main';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
+import {LoggedInMessage} from '../models/messages';
 
 type page = "signup" | "login" | "main"
 
-interface Props { }
+interface Props {}
 
 const Frontend: React.FC<Props> = ({}: Props) => {
     const [user, setCurrentUser] = useState<User | null>(null);
@@ -32,6 +33,12 @@ const Frontend: React.FC<Props> = ({}: Props) => {
         const init = async () => {
             if (await userService.get() !== null) {
                 setCurrentPage("login");
+            }
+            if (await chrome.runtime.sendMessage(LoggedInMessage.new()) === true) { // check if user is logged in with background script. The background script is more reliable for this because it will persist across page reloads, while the content script will not
+                console.log("user is logged in");
+                setCurrentPage("main");
+                setCurrentUser(await userService.get())
+
             }
         }
         init();

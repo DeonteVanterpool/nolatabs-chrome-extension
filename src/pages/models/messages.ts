@@ -1,7 +1,7 @@
 import {CommitRepository} from "../repository/commit";
 import {Repository} from "./repository";
 
-type MessageAction = "commit" | "cd";
+type MessageAction = "commit" | "cd" | "mkdir" | "login" | "loggedIn";
 type MessageOptions = {} | CommitMessageOptions;
 
 export interface Message {
@@ -16,6 +16,37 @@ export type CommitMessageOptions = {
 
 export type CDMessageOptions = {
     repo: {owner: string, name: string};
+}
+
+export type MkDirMessageOptions = {
+    repo: {owner: string, name: string};
+}
+
+export type LoginMessageOptions = {
+    password: string;
+}
+
+export type LoggedInMessageOptions = {}
+
+export class LoginMessage {
+    public static new(password: string): LoginMessage {
+        let options = {
+            password,
+        }
+        return {
+            action: "login",
+            options,
+        }
+    }
+}
+
+export class LoggedInMessage {
+    public static new(): LoggedInMessage {
+        return {
+            action: "loggedIn",
+            options: {},
+        }
+    }
 }
 
 export class CommitMessage {
@@ -44,6 +75,21 @@ export class CDMessage {
         }
         return {
             action: "cd",
+            options,
+        }
+    }
+}
+
+export class MkDirMessage {
+    public static new(name: string): MkDirMessage {
+        let options = {
+            repo: {
+                owner: "me",
+                name: name,
+            },
+        }
+        return {
+            action: "mkdir",
             options,
         }
     }
