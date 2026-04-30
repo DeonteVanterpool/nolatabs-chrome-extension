@@ -23,18 +23,11 @@ let password: string | null = null;
 // command handler
 chrome.runtime.onMessage.addListener(async (message: Message, sender, sendResponse) => {
     if (message.action === "loggedIn") {
-        console.log("logged in message received");
-        console.log("pw set to ");
-        console.log("pw " + password);
-        console.log("returning " + (password !== null));
         sendResponse(password !== null);
         return password !== null;
     } else if (message.action === "login") {
-            console.log("log in message received");
             let options = message.options as LoginMessageOptions;
             password = options.password;
-            console.log("password set to ");
-            console.log("password " + options.password);
     } else if (message.action === "commit") {
         let options = message.options as CommitMessageOptions;
         let commitRepo = new CommitRepository(chrome.storage.local);
