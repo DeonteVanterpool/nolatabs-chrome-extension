@@ -3,10 +3,10 @@ import React, {useEffect, useState} from 'react';
 import './Frontend.css';
 import {User} from '../models/user';
 import {UserService} from '../services/user';
-import {UserRepository} from '../repository/user';
+import {UserStore} from '../repository/user';
 import ViewSwitcher from './components/ViewSwitcher';
-import {CommitRepository} from '../repository/commit';
-import {RepositoryRepository} from '../repository/repository';
+import {CommitStore} from '../repository/commit';
+import {RepositoryStore} from '../repository/repository';
 import Main from './pages/Main';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
@@ -22,11 +22,11 @@ const Frontend: React.FC<Props> = ({}: Props) => {
 
     const storage = chrome.storage.local;
 
-    const userRepository = new UserRepository(storage);
-    const commitRepository = new CommitRepository(storage);
-    const repositoryRepository = new RepositoryRepository(storage);
+    const userRepository = new UserStore(storage);
+    const commitRepository = new CommitStore(storage);
+    const repositoryRepository = new RepositoryStore(storage);
 
-    const [userService] = useState<UserService>(new UserService(new UserRepository(chrome.storage.local)));
+    const [userService] = useState<UserService>(new UserService(new UserStore(chrome.storage.local)));
 
     // On component mount, check if user is logged in (we want this to be async)
     useEffect(() => {

@@ -1,6 +1,6 @@
 import {Repository} from '../models/repository';
-import {CommitRepository} from './commit';
-import {Store} from './store';
+import {CommitStore} from './commit';
+import {StorageDTO} from './store';
 
 type RepositoryStorageItem = RepositoryStorageItemV1; // add future versions here using union types
 type RepositoryStorage = RepositoryStorageV1;
@@ -17,7 +17,7 @@ type RepositoryStorageV1 = {
     version: number,
 }
 
-class RepositoryStore extends Store<Repository[], RepositoryStorage> {
+class RepositoryDTO extends StorageDTO<Repository[], RepositoryStorage> {
     deserialize(repositories: RepositoryStorage): Repository[] {
         if (repositories.version < LATEST_VERSION) {
             // run migrations
@@ -47,8 +47,7 @@ class RepositoryStore extends Store<Repository[], RepositoryStorage> {
     }
 }
 
-// HAHA
-export class RepositoryRepository {
+export class RepositoryStore {
     storage: chrome.storage.StorageArea;
 
     public constructor(storage: chrome.storage.StorageArea) {
@@ -67,19 +66,19 @@ export class RepositoryRepository {
     }
 
     public async read(): Promise<Repository[]> {
-        return new RepositoryStore().deserialize((await this.storage.get("repositories")) as RepositoryStorage);
+        return new RepositoryDTO().deserialize((await this.storage.get("repositories")) as RepositoryStorage);
     }
 
     public async create(repo: Repository) {
-        let commitRepo = new CommitRepository(this.storage);
+        let commitRepo = new CommitStore(this.storage);
         await commitRepo.init(repo);
         await this.storage.set(
-            new RepositoryStore().serialize([...await this.read(), repo]));
+            new RepositoryDTO().serialize([...await this.read(), repo]));
     }
 
     public async delete(repo: Repository) {
         await this.storage.set(
-            new RepositoryStore().serialize((await this.read()).filter((r) => !(r.name === repo.name && r.owner === repo.owner))));
+            new RepositoryDTO().serialize((await this.read()).filter((r) => !(r.name === repo.name && r.owner === repo.owner))));
     }
 }
 

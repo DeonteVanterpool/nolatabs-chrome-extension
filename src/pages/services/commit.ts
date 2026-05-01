@@ -1,21 +1,20 @@
 import {Tab} from '../models/tab';
 import {Addition, Commit, CommitDiff, Deletion, Delta} from '../models/commit';
 import {Crypto} from './crypto';
-import {CommitRepository} from '../repository/commit';
 import {Repository} from '../models/repository';
 
-type CommitStore = Map<string, Commit>;
+type Commits = Map<string, Commit>;
 
 export class CommitService {
-    static buildSnapshot(commits: CommitStore, commit: string): Tab[] {
+    static buildSnapshot(commits: Commits, commit: string): Tab[] {
         return SnapshotService.getSnapshot(commits, commit);
     }
 
-    public static list(commits: CommitStore): Commit[] {
+    public static list(commits: Commits): Commit[] {
         return Array.from(commits.values());
     }
 
-    public static getTips(commits: CommitStore): Commit[] {
+    public static getTips(commits: Commits): Commit[] {
         // in the future, we will add branch pointers to the storage
         let tips: Commit[] = [];
         let allParents: Set<string> = new Set();
@@ -30,7 +29,7 @@ export class CommitService {
         return tips;
     }
 
-    private static get(commits: CommitStore, hash: string): Commit {
+    private static get(commits: Commits, hash: string): Commit {
         let commit = commits.get(hash);
         if (!commit) {
             throw Error("No commit for given hash: " + hash);
@@ -38,7 +37,7 @@ export class CommitService {
         return commit;
     }
 
-    public static async commit(commits: CommitStore, author: string, message: string, tabs: Tab[], parents: string[]): Promise<{commit: Commit, graph: CommitStore}> {
+    public static async commit(commits: Commits, author: string, message: string, tabs: Tab[], parents: string[]): Promise<{commit: Commit, graph: Commits}> {
         let graph = commits;
         let timestamp = new Date();
         let hashInput = new CommitHashInput(author, message, timestamp, tabs, parents);

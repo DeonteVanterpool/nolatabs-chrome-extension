@@ -42,6 +42,10 @@
         <div style="width: 100%"><span class="n-alias">new</span>&nbsp;<span class="n-desc">Create a collection of tabs</span><br><span class="n-arg">window: current | new</span></div>
       </div>
       <div class="cmd-row">
+        <span class="n-cmd">rm</span>
+        <div style="width: 100%"><span class="n-alias">new</span>&nbsp;<span class="n-desc">Delete tab collection</span><br><span class="n-arg">window: current | new</span></div>
+      </div>
+      <div class="cmd-row">
         <span class="n-cmd">cd</span>
         <div style="width: 100%"><span class="n-alias">open</span>&nbsp;<span class="n-desc">Switch collections</span><br><span class="n-arg">window: current | new</span></div>
       </div>

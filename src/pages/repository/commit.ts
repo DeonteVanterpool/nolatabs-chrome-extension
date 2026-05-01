@@ -1,6 +1,6 @@
 import {Addition, Commit, CommitDiff, Deletion} from '../models/commit';
 import {Repository} from '../models/repository';
-import {Store} from './store';
+import {StorageDTO} from './store';
 
 export const validRepoOwner = new RegExp("^[0-9 A-Za-z@.-]+$");
 export const validRepoName = new RegExp("^[0-9 A-Za-z/#@.-]+$");
@@ -43,7 +43,7 @@ type TabStorageV1 = {
     pinned: boolean,
 }
 
-class CommitPageStore extends Store<Commit[], CommitPage> {
+class CommitPageStore extends StorageDTO<Commit[], CommitPage> {
     repo: Repository;
 
     public constructor(repo: Repository) {
@@ -99,7 +99,7 @@ class CommitPageStore extends Store<Commit[], CommitPage> {
     }
 }
 
-export class CommitRepository {
+export class CommitStore {
     storage: chrome.storage.StorageArea;
     public constructor(storage: chrome.storage.StorageArea) {
         this.storage = storage;
@@ -118,7 +118,7 @@ export class CommitRepository {
         }
     }
 
-    public async sync(repo: Repository, commits: Map<string, Commit>) {
+    public async set(repo: Repository, commits: Map<string, Commit>) {
         let path = `commits:${repo.owner}:${repo.name}`;
         let store = new CommitPageStore(repo).serialize(Array.from(commits.values()));
         // See: ES6 Computed Property Names https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Object_initializer#computed_property_names

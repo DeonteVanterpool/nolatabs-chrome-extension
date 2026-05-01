@@ -1,12 +1,12 @@
 import {User, UserSettings} from "../models/user";
-import {UserRepository} from "../repository/user";
+import {UserStore} from "../repository/user";
 import {Crypto} from "./crypto";
 
 export class UserService {
 
-    repo: UserRepository;
+    repo: UserStore;
 
-    constructor(repo: UserRepository) {
+    constructor(repo: UserStore) {
         this.repo = repo;
     }
 

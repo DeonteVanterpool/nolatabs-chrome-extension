@@ -1,8 +1,8 @@
 import {Commit} from "../models/commit";
 import {CDMessageOptions, CommitMessageOptions, LoginMessageOptions, Message, MkDirMessageOptions} from "../models/messages";
 import {Repository} from "../models/repository";
-import {CommitRepository} from "../repository/commit";
-import {RepositoryRepository} from "../repository/repository";
+import {CommitStore} from "../repository/commit";
+import {RepositoryStore} from "../repository/repository";
 import {CommitService} from "../services/commit";
 import "./commands";
 import {openWelcomePage} from "./services";
@@ -24,39 +24,41 @@ let password: string | null = null;
 chrome.runtime.onMessage.addListener(async (message: Message, sender, sendResponse) => {
     if (message.action === "loggedIn") {
         sendResponse(password !== null);
-        return password !== null;
     } else if (message.action === "login") {
-            let options = message.options as LoginMessageOptions;
-            password = options.password;
+        let options = message.options as LoginMessageOptions;
+        password = options.password;
     } else if (message.action === "commit") {
         let options = message.options as CommitMessageOptions;
-        let commitRepo = new CommitRepository(chrome.storage.local);
-        let commitGraph = await commitRepo.read(options.repo);
-
+        let commitStore = new CommitStore(chrome.storage.local);
+        let commitGraph = await commitStore.read(options.repo);
+        let tip = (CommitService.getTips(commitGraph)).map((c) => c.hash); // TODO: actually check where the current commit is / which branch is active instead of just committing on top of all tips
         let tabs = await BrowserWindow.getUnpinnedTabs();
 
-        let commits = await CommitService.commit(commitGraph, "me", options.message, tabs, (CommitService.getTips(commitGraph)).map((c) => c.hash));
+        let commits = await CommitService.commit(commitGraph, "me", options.message, tabs, tip);
 
-        await commitRepo.sync(options.repo, commits.graph);
+        await commitStore.set(options.repo, commits.graph);
         await BrowserWindow.addAllTabsToGroup(options.repo.name);
         sendResponse(commits.commit);
-        return commits.commit;
     } else if (message.action === "cd") {
         let options = message.options as CDMessageOptions;
 
-        changeDirectory(options.repo);
+        openRepositoryInWindow(options.repo);
     } else if (message.action === "mkdir") {
-            let options = message.options as MkDirMessageOptions;
-            let repo = options.repo;
+        let options = message.options as MkDirMessageOptions;
 
-            await new RepositoryRepository(chrome.storage.local).create(repo);
+        await new RepositoryStore(chrome.storage.local).create(options.repo);
 
-            changeDirectory(repo);
+        openRepositoryInWindow(options.repo);
+    } else if (message.action === "rm") {
+        let options = message.options as CDMessageOptions;
+        
+        await new RepositoryStore(chrome.storage.local).delete(options.repo);
+        await BrowserWindow.clearUnpinnedTabs();
     }
 });
 
-async function changeDirectory(repo: Repository) {
-    let commits: Map<string, Commit> = await new CommitRepository(chrome.storage.local).read(repo);
+async function openRepositoryInWindow(repo: Repository) {
+    let commits: Map<string, Commit> = await new CommitStore(chrome.storage.local).read(repo);
 
     await BrowserWindow.clearUnpinnedTabs();
     await BrowserWindow.createTabs(CommitService.buildLatestSnapshot(commits));

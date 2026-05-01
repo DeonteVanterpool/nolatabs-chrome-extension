@@ -1,8 +1,8 @@
 import React, {useEffect, useState} from 'react';
 import '../Frontend.css';
-import {RepositoryRepository} from '../../repository/repository';
+import {RepositoryStore} from '../../repository/repository';
 import {Repository} from '../../models/repository';
-import {CDMessage, CommitMessage, MkDirMessage} from '../../models/messages';
+import {CDMessage, CommitMessage, MkDirMessage, RmMessage} from '../../models/messages';
 import CommandPalette from '../components/CommandPalette';
 import Sidebar from '../components/Sidebar';
 
@@ -15,11 +15,11 @@ const Main: React.FC<Props> = ({}: Props) => {
 
     useEffect(() => {
         async function fetchRepos() {
-            let repo = new RepositoryRepository(chrome.storage.local);
+            let repo = new RepositoryStore(chrome.storage.local);
             if (!(await repo.initialized())) {
                 await repo.init();
             }
-            setRepos(await (new RepositoryRepository(chrome.storage.local).read()!));
+            setRepos(await (new RepositoryStore(chrome.storage.local).read()!));
             console.log(repos);
         }
         fetchRepos();
@@ -44,7 +44,7 @@ const Main: React.FC<Props> = ({}: Props) => {
 
     const handleInitRepo = async (name: string) => {
         let repo: Repository = {owner: "me", name: name} // me is the default for the current user
-        await new RepositoryRepository(chrome.storage.local).create(repo);
+        await new RepositoryStore(chrome.storage.local).create(repo);
         setRepos([...repos, repo]);
         setSelectedRepo(repo);
         await handleCommitToRepo(repo);
@@ -57,6 +57,12 @@ const Main: React.FC<Props> = ({}: Props) => {
         setRepos([...repos, repo]);
         setSelectedRepo(repo);
         await handleOpenRepo(repo);
+    }
+
+    const handleRmRepo = async (repo: Repository) => {
+        await chrome.runtime.sendMessage(RmMessage.new(repo));
+        setRepos(repos.filter((r) => r.name !== repo.name || r.owner !== repo.owner));
+        setSelectedRepo(repo);
     }
 
     const handleOpenRepo = async (repo: Repository) => {
@@ -102,11 +108,7 @@ const Main: React.FC<Props> = ({}: Props) => {
                 } else if (command[0] === "rm") {
                     let repo = repos.find((r) => r.name === command[1]);
                     if (repo) {
-                        await new RepositoryRepository(chrome.storage.local).delete(repo);
-                        setRepos(repos.filter((r) => r.name !== command[1]));
-                        if (selectedRepo?.name === command[1]) {
-                            setSelectedRepo(undefined);
-                        }
+                        handleRmRepo(repo);
                     } else {
                         alert("Repository not found");
                     }

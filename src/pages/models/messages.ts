@@ -1,7 +1,7 @@
-import {CommitRepository} from "../repository/commit";
+import {CommitStore} from "../repository/commit";
 import {Repository} from "./repository";
 
-type MessageAction = "commit" | "cd" | "mkdir" | "login" | "loggedIn";
+type MessageAction = "commit" | "cd" | "mkdir" | "login" | "loggedIn" | "rm";
 type MessageOptions = {} | CommitMessageOptions;
 
 export interface Message {
@@ -90,6 +90,21 @@ export class MkDirMessage {
         }
         return {
             action: "mkdir",
+            options,
+        }
+    }
+}
+
+export class RmMessage {
+    public static new(r: Repository): RmMessage {
+        let options = {
+            repo: {
+                owner: r.owner,
+                name: r.name,
+            },
+        }
+        return {
+            action: "rm",
             options,
         }
     }

@@ -1,6 +1,6 @@
 import {User, UserSettings} from '../models/user';
 import {SettingsStorageV1} from './settings';
-import {Store} from './store';
+import {StorageDTO} from './store';
 
 export const LATEST_VERSION = 1;
 type LATEST_USER = UserStorageV1;
@@ -43,7 +43,7 @@ export class UserBuilder {
     }
 }
 
-class UserStore extends Store<User, UserStorage> {
+class UserDTO extends StorageDTO<User, UserStorage> {
     public serialize(user: User): UserStorage {
         return {
             username: user.username,
@@ -70,7 +70,7 @@ class UserStore extends Store<User, UserStorage> {
     }
 }
 
-export class UserRepository {
+export class UserStore {
     storage: chrome.storage.StorageArea;
     public constructor(storage: chrome.storage.StorageArea) {
         this.storage = storage;
@@ -87,7 +87,7 @@ export class UserRepository {
     }
 
     public async update(user: User) {
-        await this.storage.set({user: new UserStore().serialize(user)});
+        await this.storage.set({user: new UserDTO().serialize(user)});
     }
 
     public async read(): Promise<UserStorage | null> {
