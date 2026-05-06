@@ -1,5 +1,5 @@
 import {Commit} from "../models/commit";
-import {CDMessageOptions, CommitMessageOptions, LoginMessageOptions, Message, MkDirMessageOptions} from "../models/messages";
+import {CDMessageOptions, CommitMessageOptions, LoginMessageOptions, Message, MkDirMessageOptions, MVMessageOptions} from "../models/messages";
 import {Repository} from "../models/repository";
 import {CommitStore} from "../repository/commit";
 import {RepositoryStore} from "../repository/repository";
@@ -22,6 +22,7 @@ let password: string | null = null;
 
 // command handler
 chrome.runtime.onMessage.addListener(async (message: Message, sender, sendResponse) => {
+    console.log("Received message: " + message.action);
     if (message.action === "loggedIn") {
         sendResponse(password !== null);
     } else if (message.action === "login") {
@@ -53,7 +54,19 @@ chrome.runtime.onMessage.addListener(async (message: Message, sender, sendRespon
         let options = message.options as CDMessageOptions;
         
         await new RepositoryStore(chrome.storage.local).delete(options.repo);
-        await BrowserWindow.clearUnpinnedTabs();
+    } else if (message.action === "mv") {
+        let options = message.options as MVMessageOptions;
+        let repo = options.repo;
+        let newName = options.newName;
+        let commits = await new CommitStore(chrome.storage.local).read(repo);
+        console.log(commits);
+        console.log("mv " + repo.name + " to " + newName);
+        
+        await new RepositoryStore(chrome.storage.local).create({name: newName, owner: repo.owner});
+        await new CommitStore(chrome.storage.local).set({name: newName, owner: repo.owner}, commits);
+        await new RepositoryStore(chrome.storage.local).delete(repo);
+        await new CommitStore(chrome.storage.local).delete(repo);
+        openRepositoryInWindow({name: newName, owner: repo.owner});
     }
 });
 

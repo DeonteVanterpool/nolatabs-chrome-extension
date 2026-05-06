@@ -2,7 +2,7 @@ import React, {useEffect, useState} from 'react';
 import '../Frontend.css';
 import {RepositoryStore} from '../../repository/repository';
 import {Repository} from '../../models/repository';
-import {CDMessage, CommitMessage, MkDirMessage, RmMessage} from '../../models/messages';
+import {CDMessage, CommitMessage, MkDirMessage, MVMessage, RmMessage} from '../../models/messages';
 import CommandPalette from '../components/CommandPalette';
 import Sidebar from '../components/Sidebar';
 
@@ -76,6 +76,15 @@ const Main: React.FC<Props> = ({}: Props) => {
         return repo;
     }
 
+    const handleMvRepo = async (repo: Repository, newName: string) => {
+        await chrome.runtime.sendMessage(MVMessage.new(repo, newName));
+        window.location.href = window.location.href.split("?")[0] + "?repo-name=" + newName + "&repo-owner=" + repo.owner;
+        setRepos(repos.map((r) => r.name === repo.name && r.owner === repo.owner ? {name: newName, owner: r.owner} : r));
+        if (selectedRepo && selectedRepo.name === repo.name && selectedRepo.owner === repo.owner) {
+            setSelectedRepo({name: newName, owner: selectedRepo.owner});
+        }
+    }
+
     const handleCommitToRepo = async (repo: Repository) => {
         console.log(selectedRepo);
         await chrome.runtime.sendMessage(CommitMessage.new("just commited", repo));
@@ -112,7 +121,21 @@ const Main: React.FC<Props> = ({}: Props) => {
                     } else {
                         alert("Repository not found");
                     }
-                } else {
+                } else if (command[0] === "help") {
+                    alert("Available commands:\n- mkdir [name]: create a new repository\n- init [name]: create a new repository and commit the current tabs\n- cd [name]: open a repository\n- rm [name]: delete a repository\n- commit: commit the current tabs to the currently opened repository");
+                } else if (command[0] === "mv") {
+                    let repo = repos.find((r) => r.name === command[1]);
+                    if (command[1] === ".") {
+                        repo = selectedRepo;
+                    }
+
+                    if (repo) {
+                        await handleMvRepo(repo, command[2]);
+                    } else {
+                        alert("Repository not found");
+                    }
+                }
+                else {
                     alert("Unknown command");
                 }
             }} commands={[
