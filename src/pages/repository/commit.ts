@@ -43,28 +43,21 @@ type TabStorageV1 = {
     pinned: boolean,
 }
 
-class CommitPageStore extends StorageDTO<Commit[], CommitPage> {
-    repo: Repository;
-
-    public constructor(repo: Repository) {
-        super()
+class CommitPageStore {
+    public static serialize(repo: Repository, commits: Commit[]): CommitPage {
         if (!validRepoOwner.test(repo.owner)) {
             throw Error("Invalid owner name / email");
         } else if (!validRepoName.test(repo.name)) {
             throw Error("Invalid name for a repo");
         }
-        this.repo = repo;
-    }
-
-    public serialize(commits: Commit[]): CommitPage {
         return {
-            repo: this.repo,
+            repo: repo,
             commits: CommitPageStore.toStorage(commits),
             version: LATEST_VERSION,
         };
     }
 
-    public deserialize(page: CommitPage): Commit[] {
+    public static deserialize(page: CommitPage): Commit[] {
         if (page.version < LATEST_VERSION) {
             // run migrations
         }
@@ -100,46 +93,48 @@ class CommitPageStore extends StorageDTO<Commit[], CommitPage> {
 }
 
 export class CommitStore {
-    storage: chrome.storage.StorageArea;
-    public constructor(storage: chrome.storage.StorageArea) {
-        this.storage = storage;
+    public static async initialized(storage: chrome.storage.StorageArea, repo: Repository) {
+        return Object.keys(await storage.get(`commits:${repo.owner}:${repo.name}`)).length !== 0;
     }
 
-    public async initialized(repo: Repository) {
-        return Object.keys(await this.storage.get(`commits:${repo.owner}:${repo.name}`)).length !== 0;
-    }
-
-    public async init(repo: Repository) {
-        if (!(await this.initialized(repo))) {
-            let path = `commits:${repo.owner}:${repo.name}`;
-            (this.storage.set({
-                [path]: new CommitPageStore(repo).serialize([])
+    /** Initializes the commit storage for a repository if it doesn't exist yet. Does nothing if it already exists. */
+    public static async init(storage: chrome.storage.StorageArea, repo: Repository) {
+        if (!(await CommitStore.initialized(storage, repo))) { // only initialize if it hasn't been initialized before, to avoid overwriting existing commits with an empty commit page
+            let commitsPath = CommitStore.getPathForCommits(repo);
+            (storage.set({
+                [commitsPath]: CommitPageStore.serialize(repo, [])
             }));
         }
     }
 
-    public async set(repo: Repository, commits: Map<string, Commit>) {
-        let path = `commits:${repo.owner}:${repo.name}`;
-        let store = new CommitPageStore(repo).serialize(Array.from(commits.values()));
-        // See: ES6 Computed Property Names https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Object_initializer#computed_property_names
-        this.storage.set({
-            [path]: store,
+    /** Sets the commits for a repository, overwriting any existing commits. */
+    public static async set(storage: chrome.storage.StorageArea, repo: Repository, commits: Map<string, Commit>) {
+        let commitsPath = CommitStore.getPathForCommits(repo);
+        let store = CommitPageStore.serialize(repo, Array.from(commits.values()));
+        storage.set({
+            [commitsPath]: store,
         });
     }
 
-    public async read(repo: Repository): Promise<Map<string, Commit>> {
-        let path = `commits:${repo.owner}:${repo.name}`;
+    /** Reads the commits for a repository. Returns an empty map if the repository has no commits or if the commit storage hasn't been initialized yet. */
+    public static async read(storage: chrome.storage.StorageArea, repo: Repository): Promise<Map<string, Commit>> {
+        let commitsPath = CommitStore.getPathForCommits(repo);
         let commitMap = new Map<string, Commit>();
-        let commits: Commit[] = new CommitPageStore(repo).deserialize((await this.storage.get(path))[path] as CommitPage);
+        let commits: Commit[] = CommitPageStore.deserialize((await storage.get(commitsPath))[commitsPath] as CommitPage);
         commits.forEach((commit) => commitMap.set(commit.hash, commit));
         return commitMap;
     }
 
-    public async delete(repo: Repository) {
-        if (await this.initialized(repo)) {
-            let path = `commits:${repo.owner}:${repo.name}`;
-            (this.storage.remove(path));
+    /** Deletes the commits for a repository. Does nothing if the commit storage hasn't been initialized yet. */
+    public async delete(storage: chrome.storage.StorageArea, repo: Repository) {
+        if (await CommitStore.initialized(storage, repo)) {
+            storage.remove(CommitStore.getPathForCommits(repo));
         }
+    }
+
+    /** Returns the storage path for the commits of a repository. */
+    private static getPathForCommits(repo: Repository) {
+        return `commits:${repo.owner}:${repo.name}`;
     }
 }
 
