@@ -1,6 +1,5 @@
 import {Addition, Commit, CommitDiff, Deletion} from '../models/commit';
 import {Repository} from '../models/repository';
-import {StorageDTO} from './store';
 
 export const validRepoOwner = new RegExp("^[0-9 A-Za-z@.-]+$");
 export const validRepoName = new RegExp("^[0-9 A-Za-z/#@.-]+$");
@@ -10,89 +9,92 @@ type LATEST_SCHEMA = CommitPageV1;
 export type CommitPage = CommitPageV1; // add future versions here using union types
 export interface ICommitRepository {}
 
+// This is the commit page that will be stored in chrome.storage. Never build commit pages directly, always use the serialization functions
 type CommitPageV1 = {
     repo: {owner: string, name: string},
-    commits: CommitStorageV1[],
+    commits: CommitDTOV1[],
     version: number,
     // in the future we can add pagination here
 }
 
-type CommitStorageV1 = {
+// This is the commit item that will be stored in chrome.storage. Never build commit objects directly, always use the serialization functions
+type CommitDTOV1 = {
     hash: string,
     author: string,
     timestamp: number,
     message: string,
-    additions: AdditionStorageV1[],
-    deletions: DeletionStorageV1[],
+    additions: AdditionDTOV1[],
+    deletions: DeletionDTOV1[],
     parents: string[],
 }
 
-type AdditionStorageV1 = {
-    tab: TabStorageV1,
+type AdditionDTOV1 = {
+    tab: TabDTOV1,
     after: number,
 }
 
-type DeletionStorageV1 = {
+type DeletionDTOV1 = {
     index: number,
 }
 
-type TabStorageV1 = {
+type TabDTOV1 = {
     url: string,
     title: string,
     favicon: string,
     pinned: boolean,
 }
 
-class CommitPageStore {
-    public static serialize(repo: Repository, commits: Commit[]): CommitPage {
-        if (!validRepoOwner.test(repo.owner)) {
-            throw Error("Invalid owner name / email");
-        } else if (!validRepoName.test(repo.name)) {
-            throw Error("Invalid name for a repo");
-        }
+/** Serializes a list of commits for storage. Throws an error if the repository owner or name is invalid. */
+function serializeCommits(repo: Repository, commits: Commit[]): CommitPage {
+    if (!validRepoOwner.test(repo.owner)) {
+        throw Error("Invalid owner name / email");
+    } else if (!validRepoName.test(repo.name)) {
+        throw Error("Invalid name for a repo");
+    }
+    return {
+        repo: repo,
+        commits: toStorageObject(commits),
+        version: LATEST_VERSION,
+    };
+}
+
+/** Deserializes a commit page from storage. Throws an error if the commit page is invalid. */
+function deserializeCommits(page: CommitPage): Commit[] {
+    if (page.version < LATEST_VERSION) {
+        // run migrations
+    }
+
+    return page.commits.map((c) => {
         return {
-            repo: repo,
-            commits: CommitPageStore.toStorage(commits),
-            version: LATEST_VERSION,
+            hash: c.hash,
+            author: c.author,
+            timestamp: new Date(c.timestamp),
+            message: c.message,
+            diff: {
+                additions: c.additions.map((a) => a as Addition),
+                deletions: c.deletions.map((d) => d as Deletion)
+            },
+            parents: c.parents,
         };
-    }
+    })
+}
 
-    public static deserialize(page: CommitPage): Commit[] {
-        if (page.version < LATEST_VERSION) {
-            // run migrations
-        }
-
-        return page.commits.map((c) => {
-            return {
-                hash: c.hash,
-                author: c.author,
-                timestamp: new Date(c.timestamp),
-                message: c.message,
-                diff: {
-                    additions: c.additions.map((a) => a as Addition),
-                    deletions: c.deletions.map((d) => d as Deletion)
-                },
-                parents: c.parents,
-            };
-        })
-    }
-
-    private static toStorage(commits: Commit[]): CommitStorageV1[] {
-        return commits.map((c) => {
-            return {
-                hash: c.hash,
-                author: c.author,
-                timestamp: c.timestamp.getTime(),
-                message: c.message,
-                additions: c.diff.additions.map((a) => a as AdditionStorageV1),
-                deletions: c.diff.deletions.map((d) => d as DeletionStorageV1),
-                parents: c.parents,
-            };
-        });
-    }
+function toStorageObject(commits: Commit[]): CommitDTOV1[] {
+    return commits.map((c) => {
+        return {
+            hash: c.hash,
+            author: c.author,
+            timestamp: c.timestamp.getTime(),
+            message: c.message,
+            additions: c.diff.additions.map((a) => a as AdditionDTOV1),
+            deletions: c.diff.deletions.map((d) => d as DeletionDTOV1),
+            parents: c.parents,
+        };
+    });
 }
 
 export class CommitStore {
+    /** Checks if the commit storage for a repository has been initialized. */
     public static async initialized(storage: chrome.storage.StorageArea, repo: Repository) {
         return Object.keys(await storage.get(`commits:${repo.owner}:${repo.name}`)).length !== 0;
     }
@@ -102,7 +104,7 @@ export class CommitStore {
         if (!(await CommitStore.initialized(storage, repo))) { // only initialize if it hasn't been initialized before, to avoid overwriting existing commits with an empty commit page
             let commitsPath = CommitStore.getPathForCommits(repo);
             (storage.set({
-                [commitsPath]: CommitPageStore.serialize(repo, [])
+                [commitsPath]: serializeCommits(repo, [])
             }));
         }
     }
@@ -110,7 +112,7 @@ export class CommitStore {
     /** Sets the commits for a repository, overwriting any existing commits. */
     public static async set(storage: chrome.storage.StorageArea, repo: Repository, commits: Map<string, Commit>) {
         let commitsPath = CommitStore.getPathForCommits(repo);
-        let store = CommitPageStore.serialize(repo, Array.from(commits.values()));
+        let store = serializeCommits(repo, Array.from(commits.values()));
         storage.set({
             [commitsPath]: store,
         });
@@ -120,7 +122,7 @@ export class CommitStore {
     public static async read(storage: chrome.storage.StorageArea, repo: Repository): Promise<Map<string, Commit>> {
         let commitsPath = CommitStore.getPathForCommits(repo);
         let commitMap = new Map<string, Commit>();
-        let commits: Commit[] = CommitPageStore.deserialize((await storage.get(commitsPath))[commitsPath] as CommitPage);
+        let commits: Commit[] = deserializeCommits((await storage.get(commitsPath))[commitsPath] as CommitPage);
         commits.forEach((commit) => commitMap.set(commit.hash, commit));
         return commitMap;
     }
