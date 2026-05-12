@@ -3,8 +3,6 @@ import {Addition, Commit, CommitDiff, Deletion, Delta} from '../models/commit';
 import {Crypto} from './crypto';
 import {Branch, Repository} from '../models/repository';
 import {CommitStore} from '../repository/commit';
-import {BrowserWindow} from '../Background/window';
-import {RepositoryStore} from '../repository/repository';
 import {RepositoryService} from './repository';
 
 type Commits = Map<string, Commit>;
