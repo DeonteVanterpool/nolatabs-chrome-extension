@@ -60,7 +60,7 @@ export class RepositoryService {
         let del = RepositoryService.deleteBranch(repo, branchName);
         let create = RepositoryService.createBranch(repo, branchName, newCommitHash);
         let execute = async (storage: chrome.storage.StorageArea) => {
-            await del(chrome.storage.local).then(() => create(chrome.storage.local));
+            await del(storage).then(() => create(storage));
         }
         return execute;
     }

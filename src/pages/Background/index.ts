@@ -19,16 +19,14 @@ chrome.windows.onCreated.addListener(async (window) => {
     }
 });
 
-let password: string | null = null;
-
 // command handler
 chrome.runtime.onMessage.addListener(async (message: Message, sender, sendResponse) => {
     console.log("Received message: " + message.action);
     if (message.action === "loggedIn") {
-        sendResponse(password !== null);
+        sendResponse((await chrome.storage.session.get("password")) !== null);
     } else if (message.action === "login") {
         let options = message.options as LoginMessageOptions;
-        password = options.password;
+        await chrome.storage.session.set({ password: options.password });
     } else if (message.action === "commit") {
         let options = message.options as CommitMessageOptions;
         let repo = await RepositoryService.getRepository(options.repo.name, options.repo.owner)(chrome.storage.local);
