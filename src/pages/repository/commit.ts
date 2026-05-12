@@ -1,8 +1,13 @@
 import {Addition, Commit, CommitDiff, Deletion} from '../models/commit';
-import {Repository} from '../models/repository';
 
 export const validRepoOwner = new RegExp("^[0-9 A-Za-z@.-]+$");
 export const validRepoName = new RegExp("^[0-9 A-Za-z/#@.-]+$");
+
+// We only need the repository name and owner to store commits, so we can use a simplified repository parameter type here instead of the full Repository type from repository.ts
+export type RepositoryAddress = {
+    name: string;
+    owner: string;
+}
 
 export const LATEST_VERSION = 1;
 type LATEST_SCHEMA = CommitPageV1;
@@ -45,7 +50,7 @@ type TabDTOV1 = {
 }
 
 /** Serializes a list of commits for storage. Throws an error if the repository owner or name is invalid. */
-function serializeCommits(repo: Repository, commits: Commit[]): CommitPage {
+function serializeCommits(repo: RepositoryAddress, commits: Commit[]): CommitPage {
     if (!validRepoOwner.test(repo.owner)) {
         throw Error("Invalid owner name / email");
     } else if (!validRepoName.test(repo.name)) {
@@ -95,12 +100,12 @@ function toStorageObject(commits: Commit[]): CommitDTOV1[] {
 
 export class CommitStore {
     /** Checks if the commit storage for a repository has been initialized. */
-    public static async initialized(storage: chrome.storage.StorageArea, repo: Repository) {
+    public static async initialized(storage: chrome.storage.StorageArea, repo: RepositoryAddress) {
         return Object.keys(await storage.get(`commits:${repo.owner}:${repo.name}`)).length !== 0;
     }
 
     /** Initializes the commit storage for a repository if it doesn't exist yet. Does nothing if it already exists. */
-    public static async init(storage: chrome.storage.StorageArea, repo: Repository) {
+    public static async init(storage: chrome.storage.StorageArea, repo: RepositoryAddress) {
         if (!(await CommitStore.initialized(storage, repo))) { // only initialize if it hasn't been initialized before, to avoid overwriting existing commits with an empty commit page
             let commitsPath = CommitStore.getPathForCommits(repo);
             (storage.set({
@@ -110,7 +115,7 @@ export class CommitStore {
     }
 
     /** Sets the commits for a repository, overwriting any existing commits. */
-    public static async set(storage: chrome.storage.StorageArea, repo: Repository, commits: Map<string, Commit>) {
+    public static async set(storage: chrome.storage.StorageArea, repo: RepositoryAddress, commits: Map<string, Commit>) {
         let commitsPath = CommitStore.getPathForCommits(repo);
         let store = serializeCommits(repo, Array.from(commits.values()));
         storage.set({
@@ -119,7 +124,7 @@ export class CommitStore {
     }
 
     /** Reads the commits for a repository. Returns an empty map if the repository has no commits or if the commit storage hasn't been initialized yet. */
-    public static async read(storage: chrome.storage.StorageArea, repo: Repository): Promise<Map<string, Commit>> {
+    public static async read(storage: chrome.storage.StorageArea, repo: RepositoryAddress): Promise<Map<string, Commit>> {
         let commitsPath = CommitStore.getPathForCommits(repo);
         let commitMap = new Map<string, Commit>();
         let commits: Commit[] = deserializeCommits((await storage.get(commitsPath))[commitsPath] as CommitPage);
@@ -128,14 +133,14 @@ export class CommitStore {
     }
 
     /** Deletes the commits for a repository. Does nothing if the commit storage hasn't been initialized yet. */
-    public async delete(storage: chrome.storage.StorageArea, repo: Repository) {
+    public static async delete(storage: chrome.storage.StorageArea, repo: RepositoryAddress) {
         if (await CommitStore.initialized(storage, repo)) {
             storage.remove(CommitStore.getPathForCommits(repo));
         }
     }
 
     /** Returns the storage path for the commits of a repository. */
-    private static getPathForCommits(repo: Repository) {
+    private static getPathForCommits(repo: RepositoryAddress) {
         return `commits:${repo.owner}:${repo.name}`;
     }
 }

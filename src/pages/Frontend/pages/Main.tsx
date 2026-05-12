@@ -15,11 +15,10 @@ const Main: React.FC<Props> = ({}: Props) => {
 
     useEffect(() => {
         async function fetchRepos() {
-            let repo = new RepositoryStore(chrome.storage.local);
-            if (!(await repo.initialized())) {
-                await repo.init();
+            if (!(RepositoryStore.initialized(chrome.storage.local))) {
+                await RepositoryStore.init(chrome.storage.local);
             }
-            setRepos(await (new RepositoryStore(chrome.storage.local).read()!));
+            setRepos(await (RepositoryStore.read(chrome.storage.local)!));
             console.log(repos);
         }
         fetchRepos();
@@ -44,7 +43,7 @@ const Main: React.FC<Props> = ({}: Props) => {
 
     const handleInitRepo = async (name: string) => {
         let repo: Repository = {owner: "me", name: name} // me is the default for the current user
-        await new RepositoryStore(chrome.storage.local).create(repo);
+        await RepositoryStore.create(chrome.storage.local, repo);
         setRepos([...repos, repo]);
         setSelectedRepo(repo);
         await handleCommitToRepo(repo);

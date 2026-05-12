@@ -1,6 +1,5 @@
 import {User, UserSettings} from '../models/user';
-import {SettingsStorageV1} from './settings';
-import {StorageDTO} from './store';
+import {SettingsDTOV1} from './settings';
 
 export const LATEST_VERSION = 1;
 type LATEST_USER = UserStorageV1;
@@ -14,7 +13,7 @@ export type UserStorageV1 = {
     email: string,
     passwordHash: string, // DO NOT use this hash to encrypt anything. This hash is just to ensure you entered the correct password
     premium: boolean,
-    settings: SettingsStorageV1,
+    settings: SettingsDTOV1,
     schemaVersion: 1,
 }
 
@@ -22,7 +21,7 @@ export class UserBuilder {
 
     user: LATEST_USER;
 
-    public constructor(username: string, email: string, passwordHash: string, settings: SettingsStorageV1) {
+    public constructor(username: string, email: string, passwordHash: string, settings: SettingsDTOV1) {
         this.user = {
             username: username,
             email: email,
@@ -43,7 +42,7 @@ export class UserBuilder {
     }
 }
 
-class UserDTO extends StorageDTO<User, UserStorage> {
+class UserDTO {
     public serialize(user: User): UserStorage {
         return {
             username: user.username,

@@ -1,7 +1,11 @@
 import {Tab} from '../models/tab';
 import {Addition, Commit, CommitDiff, Deletion, Delta} from '../models/commit';
 import {Crypto} from './crypto';
-import {Repository} from '../models/repository';
+import {Branch, Repository} from '../models/repository';
+import {CommitStore} from '../repository/commit';
+import {BrowserWindow} from '../Background/window';
+import {RepositoryStore} from '../repository/repository';
+import {RepositoryService} from './repository';
 
 type Commits = Map<string, Commit>;
 
@@ -29,20 +33,15 @@ export class CommitService {
         return tips;
     }
 
-    private static get(commits: Commits, hash: string): Commit {
-        let commit = commits.get(hash);
-        if (!commit) {
-            throw Error("No commit for given hash: " + hash);
-        }
-        return commit;
-    }
-
-    public static async commit(commits: Commits, author: string, message: string, tabs: Tab[], parents: string[]): Promise<{commit: Commit, graph: Commits}> {
+    public static async commit(repo: Repository, author: string, message: string, tabs: Tab[], branch: Branch[]): Promise<(storage: chrome.storage.StorageArea) => Promise<Commit>> {
+        let commits = await CommitStore.read(chrome.storage.local, repo);
         let graph = commits;
         let timestamp = new Date();
+        let parents = branch.map((b) => b.commit);
         let hashInput = new CommitHashInput(author, message, timestamp, tabs, parents);
         let hash = await new Crypto().sha2Hash(hashInput.stringify());
         let diff: CommitDiff;
+
         if (parents.length === 1) {
             let parentCommit = graph.get(parents[0]);
             if (!parentCommit) {
@@ -55,11 +54,18 @@ export class CommitService {
         } else { // merge commit
             diff = {additions: [], deletions: []}; // NO evil merges!
         }
+
         let commit = {hash, author, timestamp, message, diff, parents};
         graph = new Map(graph); // create a new map to prevent mutation
         graph.set(hash, commit);
         await this.add(commits, commit);
-        return {commit, graph};
+        let execute = async (storage: chrome.storage.StorageArea) => {
+            await CommitStore.set(storage, repo, graph);
+            console.log("committed with hash " + hash);
+            await (await RepositoryService.updateBranchPointer(repo, branch[0].name, hash))(storage);
+            return commit;
+        }
+        return execute;
     }
 
     public static buildLatestSnapshot(commits: Map<string, Commit>): Tab[] {
