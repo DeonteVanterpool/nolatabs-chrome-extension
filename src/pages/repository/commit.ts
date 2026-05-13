@@ -1,13 +1,8 @@
 import {Addition, Commit, CommitDiff, Deletion} from '../models/commit';
+import {RepositoryAddress} from '../models/repository';
 
 export const validRepoOwner = new RegExp("^[0-9 A-Za-z@.-]+$");
 export const validRepoName = new RegExp("^[0-9 A-Za-z/#@.-]+$");
-
-// We only need the repository name and owner to store commits, so we can use a simplified repository parameter type here instead of the full Repository type from repository.ts
-export type RepositoryAddress = {
-    name: string;
-    owner: string;
-}
 
 export const LATEST_VERSION = 1;
 type LATEST_SCHEMA = CommitPageV1;

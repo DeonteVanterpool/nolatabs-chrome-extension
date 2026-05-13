@@ -1,4 +1,5 @@
 import {Branch, Repository} from "../models/repository";
+import {CommitStore} from "../repository/commit";
 import {RepositoryStore} from "../repository/repository";
 
 export class RepositoryService {
@@ -44,7 +45,7 @@ export class RepositoryService {
             throw new Error(`Branch ${branchName} not found in repo ${repo.name}`);
         }
         repo.branches.splice(branchIndex, 1);
-        
+
         return async (storage: chrome.storage.StorageArea) => {
             let repos = await RepositoryStore.read(storage);
             let repoIndex = repos.findIndex((r) => r.name === repo.name && r.owner === repo.owner);
@@ -63,5 +64,19 @@ export class RepositoryService {
             await del(storage).then(() => create(storage));
         }
         return execute;
+    }
+
+    public static moveRepository(repo: Repository, newName: string): (storage: chrome.storage.StorageArea) => Promise<void> {
+        return async (storage: chrome.storage.StorageArea) => {
+            let repos = await RepositoryStore.read(storage);
+            let repoIndex = repos.findIndex((r) => r.name === repo.name && r.owner === repo.owner);
+            let commits = await CommitStore.read(chrome.storage.local, repo);
+
+            await CommitStore.set(chrome.storage.local, {name: newName, owner: repo.owner}, commits);
+            let newRepo = {...repo, name: newName};
+            repos[repoIndex] = newRepo;
+            await RepositoryStore.update(chrome.storage.local, newRepo);
+            await CommitStore.delete(chrome.storage.local, repo);
+        };
     }
 }

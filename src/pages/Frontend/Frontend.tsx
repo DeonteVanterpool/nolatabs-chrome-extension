@@ -5,8 +5,6 @@ import {User} from '../models/user';
 import {UserService} from '../services/user';
 import {UserStore} from '../repository/user';
 import ViewSwitcher from './components/ViewSwitcher';
-import {CommitStore} from '../repository/commit';
-import {RepositoryStore} from '../repository/repository';
 import Main from './pages/Main';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
@@ -22,10 +20,6 @@ const Frontend: React.FC<Props> = ({}: Props) => {
 
     const storage = chrome.storage.local;
 
-    const userRepository = new UserStore(storage);
-    const commitRepository = new CommitStore(storage);
-    const repositoryRepository = new RepositoryStore(storage);
-
     const [userService] = useState<UserService>(new UserService(new UserStore(chrome.storage.local)));
 
     // On component mount, check if user is logged in (we want this to be async)
@@ -34,6 +28,7 @@ const Frontend: React.FC<Props> = ({}: Props) => {
             if (await userService.get() !== null) {
                 setCurrentPage("login");
             }
+            console.log(await chrome.runtime.sendMessage(LoggedInMessage.new()));
             if (await chrome.runtime.sendMessage(LoggedInMessage.new()) === true) { // check if user is logged in with background script. The background script is more reliable for this because it will persist across page reloads, while the content script will not
                 setCurrentPage("main");
                 setCurrentUser(await userService.get())
