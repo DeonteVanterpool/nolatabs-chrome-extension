@@ -1,7 +1,7 @@
 export type Repository = {
     readonly name: string;
     readonly owner: string;
-    readonly branches: Branch[];
+    branches: Branch[];
 }
 
 // We only need the repository name and owner to store commits, so we can use a simplified repository address type here instead of the full Repository type from repository.ts

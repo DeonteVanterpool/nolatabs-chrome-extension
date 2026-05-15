@@ -22,6 +22,7 @@ let messageQueue: Promise<any> = Promise.resolve(); // queue to ensure that mess
 
 // command handler
 chrome.runtime.onMessage.addListener((message: Message, _sender, sendResponse): boolean => {
+    const hasResponse = ["loggedIn", "commit"].includes(message.action);
     messageQueue.then(async () => {
         if (message.action === "loggedIn") {
             let pw = await chrome.storage.session.get("password");
@@ -63,15 +64,18 @@ chrome.runtime.onMessage.addListener((message: Message, _sender, sendResponse): 
             RepositoryService.moveRepository(repo, newName)(chrome.storage.local);
             openRepositoryInWindow({name: newName, branches: repo.branches, owner: repo.owner});
         }
-    })
-    return true;
+    });
+    return hasResponse;
 });
 
 async function openRepositoryInWindow(repo: Repository) {
     let commits = await CommitStore.read(chrome.storage.local, repo);
 
     await BrowserWindow.clearUnpinnedTabs();
-    await BrowserWindow.createTabs(CommitService.buildLatestSnapshot(commits));
+    if (commits.size === 0) {
+        return;
+    }
+    await BrowserWindow.createTabs(CommitService.buildLatestSnapshot(commits, repo.branches[0]));
     await BrowserWindow.addAllTabsToGroup(repo.name);
 }
 

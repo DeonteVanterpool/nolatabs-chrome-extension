@@ -1,57 +1,27 @@
+import {addBranch, deleteBranch, getBranchByName, getRepositoryByNameAndOwner} from "../logic/repository";
 import {Branch, Repository} from "../models/repository";
 import {CommitStore} from "../repository/commit";
 import {RepositoryStore} from "../repository/repository";
 
 export class RepositoryService {
-    public static getRepository(reponame: string, owner: string): (storage: chrome.storage.StorageArea) => Promise<Repository> {
-        let execute = async (storage: chrome.storage.StorageArea) => {
-            let repos = await RepositoryStore.read(storage);
-            let repo = repos.find((r) => r.name === reponame && r.owner === owner);
-            if (!repo) {
-                throw new Error(`Repository ${owner}/${reponame} not found`);
-            }
-            return repo;
-        }
-        return execute;
+    public static async getRepository(storage: chrome.storage.StorageArea, reponame: string, owner: string): Promise<Repository> {
+        let repos = await RepositoryStore.read(storage);
+        return getRepositoryByNameAndOwner(repos, reponame, owner);
     }
     public static async getBranch(repo: Repository, branchName: string): Promise<Branch> {
-        let branch = repo.branches.find((b) => b.name === branchName);
-        if (!branch) {
-            throw new Error(`Branch ${branchName} not found in repo ${repo.name}`);
-        }
-        return branch;
+        return getBranchByName(repo, branchName);
     }
 
-    public static createBranch(repo: Repository, branchName: string, commitHash: string): (storage: chrome.storage.StorageArea) => Promise<void> {
-        if (repo.branches.find((b) => b.name === branchName)) {
-            throw new Error(`Branch ${branchName} already exists in repo ${repo.name}`);
-        }
-        repo.branches.push({name: branchName, commit: commitHash});
-
-        return async (storage: chrome.storage.StorageArea) => {
-            let repos = await RepositoryStore.read(storage);
-            let repoIndex = repos.findIndex((r) => r.name === repo.name && r.owner === repo.owner);
-            if (repoIndex === -1) {
-                throw new Error(`Repository ${repo.owner}/${repo.name} not found`);
-            }
-            repos[repoIndex] = repo;
-            await RepositoryStore.update(storage, repo);
-        }
+    public static async createBranch(storage: chrome.storage.StorageArea, repo: Repository, branchName: string, commitHash: string): Promise<void> {
+        let res = addBranch(repo, branchName, commitHash);
+        await RepositoryStore.update(storage, res);
     }
 
-    public static deleteBranch(repo: Repository, branchName: string): (storage: chrome.storage.StorageArea) => Promise<void> {
-        let branchIndex = repo.branches.findIndex((b) => b.name === branchName);
-        if (branchIndex === -1) {
-            throw new Error(`Branch ${branchName} not found in repo ${repo.name}`);
-        }
-        repo.branches.splice(branchIndex, 1);
+    public static deleteBranch(storage: chrome.storage.StorageArea, repo: Repository, branchName: string): (storage: chrome.storage.StorageArea) => Promise<void> {
+        let repos = await RepositoryStore.read(storage);
+        repos = deleteBranch(repo, branchName);
 
         return async (storage: chrome.storage.StorageArea) => {
-            let repos = await RepositoryStore.read(storage);
-            let repoIndex = repos.findIndex((r) => r.name === repo.name && r.owner === repo.owner);
-            if (repoIndex === -1) {
-                throw new Error(`Repository ${repo.owner}/${repo.name} not found`);
-            }
             repos[repoIndex] = repo;
             await RepositoryStore.update(storage, repo);
         }

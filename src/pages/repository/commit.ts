@@ -110,21 +110,19 @@ export class CommitStore {
     }
 
     /** Sets the commits for a repository, overwriting any existing commits. */
-    public static async set(storage: chrome.storage.StorageArea, repo: RepositoryAddress, commits: Map<string, Commit>) {
+    public static async set(storage: chrome.storage.StorageArea, repo: RepositoryAddress, commits: Commit[]) {
         let commitsPath = CommitStore.getPathForCommits(repo);
-        let store = serializeCommits(repo, Array.from(commits.values()));
+        let store = serializeCommits(repo, commits);
         storage.set({
             [commitsPath]: store,
         });
     }
 
     /** Reads the commits for a repository. Returns an empty map if the repository has no commits or if the commit storage hasn't been initialized yet. */
-    public static async read(storage: chrome.storage.StorageArea, repo: RepositoryAddress): Promise<Map<string, Commit>> {
+    public static async read(storage: chrome.storage.StorageArea, repo: RepositoryAddress): Promise<Commit[]> {
         let commitsPath = CommitStore.getPathForCommits(repo);
-        let commitMap = new Map<string, Commit>();
         let commits: Commit[] = deserializeCommits((await storage.get(commitsPath))[commitsPath] as CommitPage);
-        commits.forEach((commit) => commitMap.set(commit.hash, commit));
-        return commitMap;
+        return commits;
     }
 
     /** Deletes the commits for a repository. Does nothing if the commit storage hasn't been initialized yet. */

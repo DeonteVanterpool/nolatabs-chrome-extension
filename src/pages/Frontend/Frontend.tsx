@@ -28,7 +28,6 @@ const Frontend: React.FC<Props> = ({}: Props) => {
             if (await userService.get() !== null) {
                 setCurrentPage("login");
             }
-            console.log(await chrome.runtime.sendMessage(LoggedInMessage.new()));
             if (await chrome.runtime.sendMessage(LoggedInMessage.new()) === true) { // check if user is logged in with background script. The background script is more reliable for this because it will persist across page reloads, while the content script will not
                 setCurrentPage("main");
                 setCurrentUser(await userService.get())
