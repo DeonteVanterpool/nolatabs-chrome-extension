@@ -1,6 +1,5 @@
 import {CDMessageOptions, CommitMessageOptions, LoginMessageOptions, Message, MkDirMessageOptions, MVMessageOptions} from "../models/messages";
 import {Repository} from "../models/repository";
-import {CommitStore} from "../repository/commit";
 import {RepositoryStore} from "../repository/repository";
 import {CommitService} from "../services/commit";
 import {RepositoryService} from "../services/repository";
@@ -32,50 +31,29 @@ chrome.runtime.onMessage.addListener((message: Message, _sender, sendResponse): 
             await chrome.storage.session.set({password: options.password});
         } else if (message.action === "commit") {
             let options = message.options as CommitMessageOptions;
-            let repo = await RepositoryService.getRepository(options.repo.name, options.repo.owner)(chrome.storage.local);
             let tabs = await BrowserWindow.getUnpinnedTabs();
-            let action = await CommitService.commit(repo, "me", options.message, tabs, [await RepositoryService.getBranch(repo, "main")]);
 
-            let commit = await action(chrome.storage.local);
-            await BrowserWindow.addAllTabsToGroup(options.repo.name);
+            let commit = await CommitService.commit(chrome.storage.local, options.repo, "me", options.message, tabs, [await RepositoryService.getBranch(chrome.storage.local, options.repo, "main")]);
+
             sendResponse(commit);
         } else if (message.action === "cd") {
             let options = message.options as CDMessageOptions;
-            let repo = await RepositoryService.getRepository(options.repo.name, options.repo.owner)(chrome.storage.local);
-
-            openRepositoryInWindow(repo);
+            await RepositoryService.openRepository(chrome.storage.local, options.repo);
         } else if (message.action === "mkdir") {
             let options = message.options as MkDirMessageOptions;
-            let repo = await RepositoryService.getRepository(options.repo.name, options.repo.owner)(chrome.storage.local);
+            let repo: Repository = { ...options.repo, branches: [] }
 
             await RepositoryStore.create(chrome.storage.local, repo);
-
-            openRepositoryInWindow(repo);
         } else if (message.action === "rm") {
             let options = message.options as CDMessageOptions;
-            let repo = await RepositoryService.getRepository(options.repo.name, options.repo.owner)(chrome.storage.local);
 
-            await RepositoryStore.delete(chrome.storage.local, repo);
+            await RepositoryStore.delete(chrome.storage.local, options.repo);
         } else if (message.action === "mv") {
             let options = message.options as MVMessageOptions;
-            let repo = await RepositoryService.getRepository(options.repo.name, options.repo.owner)(chrome.storage.local);
             let newName = options.newName;
 
-            RepositoryService.moveRepository(repo, newName)(chrome.storage.local);
-            openRepositoryInWindow({name: newName, branches: repo.branches, owner: repo.owner});
+            RepositoryService.moveRepository(chrome.storage.local, options.repo, newName);
         }
     });
     return hasResponse;
 });
-
-async function openRepositoryInWindow(repo: Repository) {
-    let commits = await CommitStore.read(chrome.storage.local, repo);
-
-    await BrowserWindow.clearUnpinnedTabs();
-    if (commits.size === 0) {
-        return;
-    }
-    await BrowserWindow.createTabs(CommitService.buildLatestSnapshot(commits, repo.branches[0]));
-    await BrowserWindow.addAllTabsToGroup(repo.name);
-}
-

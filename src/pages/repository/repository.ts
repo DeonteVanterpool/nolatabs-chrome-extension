@@ -1,5 +1,5 @@
 import {Commit} from '../models/commit';
-import {Repository} from '../models/repository';
+import {Repository, RepositoryAddress} from '../models/repository';
 import {CommitStore} from './commit';
 
 type RepositoryDTO = RepositoryDTOV2; // add future versions here using union types
@@ -162,7 +162,7 @@ export class RepositoryStore {
         await storage.set({repositories: serializeRepo(repos)});
     }
 
-    public static async delete(storage: chrome.storage.StorageArea, repo: Repository) {
+    public static async delete(storage: chrome.storage.StorageArea, repo: RepositoryAddress) {
         await storage.set({repositories: serializeRepo((await RepositoryStore.read(storage)).filter((r) => !(r.name === repo.name && r.owner === repo.owner)))});
     }
 }

@@ -31,7 +31,7 @@ export function addBranch(repo: Repository, branchName: string, commitHash: stri
     };
 }
 
-export function deleteBranch(repo: Repository, branchName: string): Repository {
+export function removeBranch(repo: Repository, branchName: string): Repository {
     if (!hasBranch(repo, branchName)) {
         throw new Error(`Branch ${branchName} not found in repo ${repo.name}`);
     }
@@ -40,4 +40,24 @@ export function deleteBranch(repo: Repository, branchName: string): Repository {
         ...repo,
         branches: repo.branches.filter((b) => b.name !== branchName),
     };
+}
+
+export function updateBranchPointer(repo: Repository, branchName: string, newCommitHash: string): Repository {
+    if (!hasBranch(repo, branchName)) {
+        throw new Error(`Branch ${branchName} not found in repo ${repo.name}`);
+    }
+    
+    return {
+        ...repo,
+        branches: repo.branches.map((b) => 
+            b.name === branchName ? { ...b, commit: newCommitHash } : b
+        ),
+    };
+}
+
+export function renameRepository(repo: Repository, newName: string): Repository {
+    return {
+        ...repo,
+        name: newName,
+    }
 }

@@ -1,52 +1,69 @@
-import {addBranch, deleteBranch, getBranchByName, getRepositoryByNameAndOwner} from "../logic/repository";
-import {Branch, Repository} from "../models/repository";
+import {BrowserWindow} from "../Background/window";
+import {addBranch, getBranchByName, getRepositoryByNameAndOwner, removeBranch, renameRepository, updateBranchPointer} from "../logic/repository";
+import {Branch, Repository, RepositoryAddress} from "../models/repository";
 import {CommitStore} from "../repository/commit";
 import {RepositoryStore} from "../repository/repository";
+import {CommitService} from "./commit";
 
 export class RepositoryService {
-    public static async getRepository(storage: chrome.storage.StorageArea, reponame: string, owner: string): Promise<Repository> {
+    static async getRepository(storage: chrome.storage.StorageArea, repo: RepositoryAddress): Promise<Repository> {
         let repos = await RepositoryStore.read(storage);
-        return getRepositoryByNameAndOwner(repos, reponame, owner);
+        return getRepositoryByNameAndOwner(repos, repo.name, repo.owner);
     }
-    public static async getBranch(repo: Repository, branchName: string): Promise<Branch> {
+    public static async openRepository(storage: chrome.storage.StorageArea, repoAddr: RepositoryAddress): Promise<Repository> {
+        let repo = await RepositoryService.getRepository(storage, repoAddr);
+        RepositoryService.openRepositoryInWindow(storage, repo);
+        return repo;
+    }
+
+    public static async getBranch(storage: chrome.storage.StorageArea, repoAddr: RepositoryAddress, branchName: string): Promise<Branch> {
+        let repo = await RepositoryService.getRepository(storage, repoAddr);
         return getBranchByName(repo, branchName);
     }
 
-    public static async createBranch(storage: chrome.storage.StorageArea, repo: Repository, branchName: string, commitHash: string): Promise<void> {
+    public static async createBranch(storage: chrome.storage.StorageArea, repoAddr: RepositoryAddress, branchName: string, commitHash: string): Promise<void> {
+        let repo = await RepositoryService.getRepository(storage, repoAddr);
         let res = addBranch(repo, branchName, commitHash);
         await RepositoryStore.update(storage, res);
     }
 
-    public static deleteBranch(storage: chrome.storage.StorageArea, repo: Repository, branchName: string): (storage: chrome.storage.StorageArea) => Promise<void> {
-        let repos = await RepositoryStore.read(storage);
-        repos = deleteBranch(repo, branchName);
+    public static async deleteBranch(storage: chrome.storage.StorageArea, repoAddr: RepositoryAddress, branchName: string): Promise<void> {
+        let repo = await RepositoryService.getRepository(storage, repoAddr);
+        repo = removeBranch(repo, branchName);
 
-        return async (storage: chrome.storage.StorageArea) => {
-            repos[repoIndex] = repo;
-            await RepositoryStore.update(storage, repo);
-        }
+        await RepositoryStore.update(storage, repo);
     }
 
-    public static async updateBranchPointer(repo: Repository, branchName: string, newCommitHash: string) {
-        let del = RepositoryService.deleteBranch(repo, branchName);
-        let create = RepositoryService.createBranch(repo, branchName, newCommitHash);
-        let execute = async (storage: chrome.storage.StorageArea) => {
-            await del(storage).then(() => create(storage));
-        }
-        return execute;
+    public static async updateBranchPointer(storage: chrome.storage.StorageArea, repoAddr: RepositoryAddress, branchName: string, newCommitHash: string) {
+        let repo = await RepositoryService.getRepository(storage, repoAddr);
+        repo = updateBranchPointer(repo, branchName, newCommitHash);
+
+        await RepositoryStore.update(storage, repo);
     }
 
-    public static moveRepository(repo: Repository, newName: string): (storage: chrome.storage.StorageArea) => Promise<void> {
-        return async (storage: chrome.storage.StorageArea) => {
-            let repos = await RepositoryStore.read(storage);
-            let repoIndex = repos.findIndex((r) => r.name === repo.name && r.owner === repo.owner);
-            let commits = await CommitStore.read(chrome.storage.local, repo);
+    public static async moveRepository(storage: chrome.storage.StorageArea, repoAddr: RepositoryAddress, newName: string): Promise<void> {
+        let repo = await RepositoryService.getRepository(storage, repoAddr);
+        let res = renameRepository(repo, newName);
 
-            await CommitStore.set(chrome.storage.local, {name: newName, owner: repo.owner}, commits);
-            let newRepo = {...repo, name: newName};
-            repos[repoIndex] = newRepo;
-            await RepositoryStore.update(chrome.storage.local, newRepo);
-            await CommitStore.delete(chrome.storage.local, repo);
-        };
+        await RepositoryStore.update(storage, res);
+
+        RepositoryService.openRepositoryInWindow(storage, res);
+    }
+
+    public static async openRepositoryInWindow(storage: chrome.storage.StorageArea, repoAddr: RepositoryAddress) {
+        let repo = await RepositoryService.getRepository(storage, repoAddr);
+        if (repo.branches.length === 0) {
+            await BrowserWindow.clearUnpinnedTabs();
+            return;
+        }
+        let branch = getBranchByName(repo, "main")
+        let commits = await CommitStore.read(chrome.storage.local, repo);
+
+        await BrowserWindow.clearUnpinnedTabs();
+        if (commits.length === 0) {
+            return;
+        }
+        await BrowserWindow.createTabs(await CommitService.getSnapshotForCommit(chrome.storage.local, repo, branch.commit));
+        await BrowserWindow.addAllTabsToGroup(repo.name);
     }
 }

@@ -1,4 +1,4 @@
-import {User, UserSettings} from "../models/user";
+import {User} from "../models/user";
 import {UserStore} from "../repository/user";
 import {Crypto} from "./crypto";
 

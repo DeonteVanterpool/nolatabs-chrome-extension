@@ -1,5 +1,5 @@
 import {CommitStore} from "../repository/commit";
-import {Repository} from "./repository";
+import {Repository, RepositoryAddress} from "./repository";
 
 type MessageAction = "commit" | "cd" | "mkdir" | "login" | "loggedIn" | "rm" | "mv";
 type MessageOptions = {} | CommitMessageOptions;
@@ -11,15 +11,15 @@ export interface Message {
 
 export type CommitMessageOptions = {
     message: string,
-    repo: {owner: string, name: string};
+    repo: RepositoryAddress
 }
 
 export type CDMessageOptions = {
-    repo: {owner: string, name: string};
+    repo: RepositoryAddress;
 }
 
 export type MkDirMessageOptions = {
-    repo: {owner: string, name: string};
+    repo: RepositoryAddress;
 }
 
 export type LoginMessageOptions = {
