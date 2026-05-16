@@ -33,7 +33,9 @@ chrome.runtime.onMessage.addListener((message: Message, _sender, sendResponse): 
             let options = message.options as CommitMessageOptions;
             let tabs = await BrowserWindow.getUnpinnedTabs();
 
-            let commit = await CommitService.commit(chrome.storage.local, options.repo, "me", options.message, tabs, [await RepositoryService.getBranch(chrome.storage.local, options.repo, "main")]);
+            console.log("Raorestn")
+
+            let commit = await CommitService.commit(chrome.storage.local, options.repo, "me", options.message, tabs, ["main"]);
 
             sendResponse(commit);
         } else if (message.action === "cd") {
@@ -47,7 +49,7 @@ chrome.runtime.onMessage.addListener((message: Message, _sender, sendResponse): 
         } else if (message.action === "rm") {
             let options = message.options as CDMessageOptions;
 
-            await RepositoryStore.delete(chrome.storage.local, options.repo);
+            RepositoryService.removeRepository(chrome.storage.local, options.repo);
         } else if (message.action === "mv") {
             let options = message.options as MVMessageOptions;
             let newName = options.newName;

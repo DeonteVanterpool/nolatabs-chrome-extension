@@ -10,9 +10,17 @@ export class RepositoryService {
         let repos = await RepositoryStore.read(storage);
         return getRepositoryByNameAndOwner(repos, repo.name, repo.owner);
     }
+
     public static async openRepository(storage: chrome.storage.StorageArea, repoAddr: RepositoryAddress): Promise<Repository> {
         let repo = await RepositoryService.getRepository(storage, repoAddr);
         RepositoryService.openRepositoryInWindow(storage, repo);
+        return repo;
+    }
+
+    public static async removeRepository(storage: chrome.storage.StorageArea, repoAddr: RepositoryAddress): Promise<Repository> {
+        let repo = RepositoryService.getRepository(storage, repoAddr);
+        await RepositoryStore.delete(chrome.storage.local, repoAddr);
+        BrowserWindow.clearUnpinnedTabs();
         return repo;
     }
 

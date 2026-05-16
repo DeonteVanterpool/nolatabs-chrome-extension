@@ -1,4 +1,3 @@
-import {CommitStore} from "../repository/commit";
 import {Repository, RepositoryAddress} from "./repository";
 
 type MessageAction = "commit" | "cd" | "mkdir" | "login" | "loggedIn" | "rm" | "mv";

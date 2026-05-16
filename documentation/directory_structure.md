@@ -20,7 +20,10 @@ This directory has the domain models.
 This project uses the repository pattern. Repository files handle external data accesses and mutation.
 
 `src/pages/services`
-This directory has the business logic for the project
+This project uses the Functional Core, Imperative Shell design pattern. This directory is the imperative shell. It is the part of the business logic that deals with side effects.
+
+`src/pages/logic`
+This directory is the functional core of the project. It has all the pure functions for the project. Unit tests should be on the functions in this file.
 
 ## src/wasm
 This project uses webassembly. Any libraries in Webassembly will go here.
