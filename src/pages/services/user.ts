@@ -30,6 +30,10 @@ export class UserService {
         }).then(() => true).catch(() => false);
     }
 
+    public static async welcomed(storage: chrome.storage.StorageArea): Promise<boolean> {
+        return (await chrome.storage.session.get("welcomed")).welcomed === true;
+    }
+
     public async authenticate(password: string): Promise<boolean> {
         let user = await this.repo.read();
         return await new Crypto().argon2Verify(password, user!.passwordHash) === true;

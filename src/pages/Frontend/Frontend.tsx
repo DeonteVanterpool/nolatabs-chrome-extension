@@ -6,11 +6,12 @@ import {UserService} from '../services/user';
 import {UserStore} from '../repository/user';
 import ViewSwitcher from './components/ViewSwitcher';
 import Main from './pages/Main';
+import Welcome from './pages/Welcome';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
-import {LoggedInMessage} from '../models/messages';
+import {LoggedInMessage, WelcomedMessage} from '../models/messages';
 
-type page = "signup" | "login" | "main"
+type page = "signup" | "login" | "main" | "welcome"
 
 interface Props {}
 
@@ -25,13 +26,13 @@ const Frontend: React.FC<Props> = ({}: Props) => {
     // On component mount, check if user is logged in (we want this to be async)
     useEffect(() => {
         const init = async () => {
-            if (await userService.get() !== null) {
+            if (await chrome.runtime.sendMessage(WelcomedMessage.new()) === false) {
+                setCurrentPage("welcome");
+            } else if (await userService.get() !== null) {
                 setCurrentPage("login");
-            }
-            if (await chrome.runtime.sendMessage(LoggedInMessage.new()) === true) { // check if user is logged in with background script. The background script is more reliable for this because it will persist across page reloads, while the content script will not
+            }  else if (await chrome.runtime.sendMessage(LoggedInMessage.new()) === true) { // check if user is logged in with background script. The background script is more reliable for this because it will persist across page reloads, while the content script will not
                 setCurrentPage("main");
                 setCurrentUser(await userService.get())
-
             }
         }
         init();
@@ -62,11 +63,15 @@ const Frontend: React.FC<Props> = ({}: Props) => {
     const SignUpComponent = () => <Signup handleSignup={handleSignup} handleRenderLoginPage={handleRenderLoginPage} userService={userService}></Signup>;
     const LoginComponent = () => <Login onLogin={handleLogin} renderSignup={handleRenderSignupPage} userService={userService}></Login>;
     const MainComponent = () => <Main></Main>;
+    const WelcomeComponent = () => <Welcome handleRenderLoginPage={function (): void {
+        handleRenderLoginPage()
+    } }></Welcome>;
 
     return <ViewSwitcher pages={[
         {name: "signup", component: SignUpComponent},
         {name: "login", component: LoginComponent},
         {name: "main", component: MainComponent},
+        {name: "welcome", component: WelcomeComponent},
     ]} selectedPage={currentPage}></ViewSwitcher>
 };
 

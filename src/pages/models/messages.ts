@@ -1,6 +1,6 @@
 import {Repository, RepositoryAddress} from "./repository";
 
-type MessageAction = "commit" | "cd" | "mkdir" | "login" | "loggedIn" | "rm" | "mv";
+type MessageAction = "commit" | "cd" | "mkdir" | "login" | "loggedIn" | "rm" | "mv" | "welcomed";
 type MessageOptions = {} | CommitMessageOptions;
 
 export interface Message {
@@ -35,6 +35,15 @@ export class LoginMessage {
         return {
             action: "login",
             options,
+        }
+    }
+}
+
+export class WelcomedMessage {
+    public static new(): LoginMessage {
+        return {
+            action: "welcomed",
+            options: {},
         }
     }
 }

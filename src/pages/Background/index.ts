@@ -3,6 +3,7 @@ import {Repository} from "../models/repository";
 import {RepositoryStore} from "../repository/repository";
 import {CommitService} from "../services/commit";
 import {RepositoryService} from "../services/repository";
+import {UserService} from "../services/user";
 import "./commands";
 import {openWelcomePage} from "./services";
 import {BrowserWindow} from "./window";
@@ -21,7 +22,7 @@ let messageQueue: Promise<any> = Promise.resolve(); // queue to ensure that mess
 
 // command handler
 chrome.runtime.onMessage.addListener((message: Message, _sender, sendResponse): boolean => {
-    const hasResponse = ["loggedIn", "commit"].includes(message.action);
+    const hasResponse = ["loggedIn", "commit", "welcomed"].includes(message.action);
     messageQueue.then(async () => {
         if (message.action === "loggedIn") {
             let pw = await chrome.storage.session.get("password");
@@ -55,6 +56,10 @@ chrome.runtime.onMessage.addListener((message: Message, _sender, sendResponse): 
             let newName = options.newName;
 
             RepositoryService.moveRepository(chrome.storage.local, options.repo, newName);
+        } else if (message.action === "welcomed") {
+            console.log("aieorstn")
+            console.log(await UserService.welcomed(chrome.storage.local))
+            sendResponse(await UserService.welcomed(chrome.storage.local));
         }
     });
     return hasResponse;
