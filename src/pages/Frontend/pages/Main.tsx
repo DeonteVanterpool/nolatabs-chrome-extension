@@ -15,7 +15,7 @@ const Main: React.FC<Props> = ({}: Props) => {
 
     useEffect(() => {
         async function fetchRepos() {
-            if (!(RepositoryStore.initialized(chrome.storage.local))) {
+            if (!(await RepositoryStore.initialized(chrome.storage.local))) {
                 await RepositoryStore.init(chrome.storage.local);
             }
             setRepos(await (RepositoryStore.read(chrome.storage.local)!));
@@ -27,7 +27,7 @@ const Main: React.FC<Props> = ({}: Props) => {
             let url = window.location.href;
             let params = new URLSearchParams(url.split("?")[1]);
             if (params.has("repo-name") && params.has("repo-owner")) {
-                let repo: Repository = { owner: params.get("repo-owner")!, name: params.get("repo-name")! };
+                let repo: Repository = { owner: params.get("repo-owner")!, name: params.get("repo-name")!, branches: [] };
                 setSelectedRepo(repo);
             }
         }
@@ -42,7 +42,7 @@ const Main: React.FC<Props> = ({}: Props) => {
     }, [repos]);
 
     const handleInitRepo = async (name: string) => {
-        let repo: Repository = {owner: "me", name: name} // me is the default for the current user
+        let repo: Repository = {owner: "me", name: name, branches: []} // me is the default for the current user
         await RepositoryStore.create(chrome.storage.local, repo);
         setRepos([...repos, repo]);
         setSelectedRepo(repo);
@@ -51,7 +51,7 @@ const Main: React.FC<Props> = ({}: Props) => {
     }
 
     const handleMkRepo = async (name: string) => {
-        let repo: Repository = {owner: "me", name: name}
+        let repo: Repository = {owner: "me", name: name, branches: []}
         await chrome.runtime.sendMessage(MkDirMessage.new(name));
         setRepos([...repos, repo]);
         setSelectedRepo(repo);
@@ -78,9 +78,9 @@ const Main: React.FC<Props> = ({}: Props) => {
     const handleMvRepo = async (repo: Repository, newName: string) => {
         await chrome.runtime.sendMessage(MVMessage.new(repo, newName));
         window.location.href = window.location.href.split("?")[0] + "?repo-name=" + newName + "&repo-owner=" + repo.owner;
-        setRepos(repos.map((r) => r.name === repo.name && r.owner === repo.owner ? {name: newName, owner: r.owner} : r));
+        setRepos(repos.map((r) => r.name === repo.name && r.owner === repo.owner ? {name: newName, owner: r.owner, branches: []} : r));
         if (selectedRepo && selectedRepo.name === repo.name && selectedRepo.owner === repo.owner) {
-            setSelectedRepo({name: newName, owner: selectedRepo.owner});
+            setSelectedRepo({name: newName, owner: selectedRepo.owner, branches: []});
         }
     }
 

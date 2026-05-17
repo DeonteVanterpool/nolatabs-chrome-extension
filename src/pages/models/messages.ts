@@ -25,6 +25,11 @@ export type LoginMessageOptions = {
     password: string;
 }
 
+export type WelcomeMessageOptions = {
+    password: string,
+    devMode: boolean,
+}
+
 export type LoggedInMessageOptions = {}
 
 export class LoginMessage {
@@ -44,6 +49,15 @@ export class WelcomedMessage {
         return {
             action: "welcomed",
             options: {},
+        }
+    }
+}
+
+export class WelcomeMessage {
+    public static new(password: string, devMode: boolean): LoginMessage {
+        return {
+            action: "welcome",
+            options: {password, devMode},
         }
     }
 }

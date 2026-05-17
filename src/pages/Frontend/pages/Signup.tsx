@@ -6,10 +6,9 @@ import {User} from '../../models/user';
 interface Props {
     handleSignup: (user: User) => void;
     handleRenderLoginPage: () => void;
-    userService: UserService;
 }
 
-const Frontend: React.FC<Props> = ({ handleSignup: onSignUp, handleRenderLoginPage: renderLogin, userService}: Props) => {
+const Frontend: React.FC<Props> = ({ handleSignup: onSignUp, handleRenderLoginPage: renderLogin}: Props) => {
     const [name, setName] = useState('');
     const [password, setPassword] = useState('');
 
@@ -22,8 +21,8 @@ const Frontend: React.FC<Props> = ({ handleSignup: onSignUp, handleRenderLoginPa
 
     const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        userService.signup(name, password);
-        onSignUp((await userService.get())!);
+        UserService.signup(chrome.storage.local, name, password);
+        onSignUp((await UserService.get(chrome.storage.local))!);
     }
 
     return <div className="SignUpPage">

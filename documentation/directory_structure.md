@@ -25,6 +25,9 @@ This project uses the Functional Core, Imperative Shell design pattern. This dir
 `src/pages/logic`
 This directory is the functional core of the project. It has all the pure functions for the project. Unit tests should be on the functions in this file.
 
+`src/pages/api`
+This directory handles the client API calls to the backend.
+
 ## src/wasm
 This project uses webassembly. Any libraries in Webassembly will go here.
 

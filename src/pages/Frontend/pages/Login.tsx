@@ -7,10 +7,9 @@ import {LoginMessage} from '../../models/messages';
 interface Props {
     onLogin: (user: User) => void;
     renderSignup: () => void;
-    userService: UserService;
 }
 
-const Login: React.FC<Props> = ({onLogin, renderSignup, userService}: Props) => {
+const Login: React.FC<Props> = ({onLogin, renderSignup}: Props) => {
     const [password, setPassword] = useState('');
 
     const handlePasswordChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -19,8 +18,8 @@ const Login: React.FC<Props> = ({onLogin, renderSignup, userService}: Props) => 
 
     const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        if (await userService.authenticate(password) === true) {
-            onLogin((await userService.get())!);
+        if (await UserService.authenticate(chrome.storage.local, password) === true) {
+            onLogin((await UserService.get(chrome.storage.local))!);
             chrome.runtime.sendMessage(LoginMessage.new(password)); // Notify background script of login. Ideally this message should never be intercepted by anything other than the background script, but we should probably add some sort of type field to the message to be safe
         }
     }

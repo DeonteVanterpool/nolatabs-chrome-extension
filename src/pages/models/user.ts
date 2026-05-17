@@ -7,7 +7,7 @@ export type User = {
 }
 
 export type UserSettings = {
-    readonly devMode: boolean;
+    devMode: boolean;
     readonly autoCommit: boolean;
     readonly commitIntervalTime: number; // Time it takes to autosave between commits in millisecond
     readonly commitMode: "smart" | "timer" | "greedy"; // smart: commit whenever idle for 30 second

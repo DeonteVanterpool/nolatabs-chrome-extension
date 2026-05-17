@@ -1,41 +1,33 @@
+import {createDefaultUser, setDevMode} from "../logic/user";
 import {User} from "../models/user";
 import {UserStore} from "../repository/user";
 import {Crypto} from "./crypto";
 
 export class UserService {
 
-    repo: UserStore;
-
-    constructor(repo: UserStore) {
-        this.repo = repo;
+    public static async get(storage: chrome.storage.StorageArea): Promise<User | null> {
+        return UserStore.read(storage);
     }
 
-    public async get(): Promise<User | null> {
-        return this.repo.read();
-    }
-
-    public async signup(name: string, password: string): Promise<boolean> {
-        return await this.repo.create({
-            username: name,
-            email: "",
-            passwordHash: await new Crypto().argon2Hash(password),
-            premium: false,
-            settings: {
-                devMode: false,
-                autoCommit: true,
-                commitIntervalTime: 3600,
-                commitMode: "timer",
-                autoPush: false,
-            },
-        }).then(() => true).catch(() => false);
+    public static async signup(storage: chrome.storage.StorageArea, name: string, password: string): Promise<boolean> {
+        let passwordHash = await new Crypto().argon2Hash(password);
+        return await UserStore.create(storage, createDefaultUser(name, passwordHash)).then(() => true).catch(() => false);
     }
 
     public static async welcomed(storage: chrome.storage.StorageArea): Promise<boolean> {
-        return (await chrome.storage.session.get("welcomed")).welcomed === true;
+        return await UserService.get(storage) !== null;
     }
 
-    public async authenticate(password: string): Promise<boolean> {
-        let user = await this.repo.read();
+    public static async welcome(storage: chrome.storage.StorageArea, password: string, devMode: boolean): Promise<void> {
+        await UserService.signup(storage, "me", password);
+
+        let user = setDevMode((await UserService.get(storage))!, devMode);
+
+        await UserStore.update(storage, user);
+    }
+
+    public static async authenticate(storage: chrome.storage.StorageArea, password: string): Promise<boolean> {
+        let user = await UserStore.read(storage);
         return await new Crypto().argon2Verify(password, user!.passwordHash) === true;
     }
 }

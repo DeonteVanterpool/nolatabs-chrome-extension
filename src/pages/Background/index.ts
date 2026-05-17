@@ -1,4 +1,4 @@
-import {CDMessageOptions, CommitMessageOptions, LoginMessageOptions, Message, MkDirMessageOptions, MVMessageOptions} from "../models/messages";
+import {CDMessageOptions, CommitMessageOptions, LoginMessageOptions, Message, MkDirMessageOptions, MVMessageOptions, WelcomeMessageOptions} from "../models/messages";
 import {Repository} from "../models/repository";
 import {RepositoryStore} from "../repository/repository";
 import {CommitService} from "../services/commit";
@@ -60,6 +60,10 @@ chrome.runtime.onMessage.addListener((message: Message, _sender, sendResponse): 
             console.log("aieorstn")
             console.log(await UserService.welcomed(chrome.storage.local))
             sendResponse(await UserService.welcomed(chrome.storage.local));
+        } else if (message.action === "welcome") {
+            let options = message.options as WelcomeMessageOptions;
+
+            await UserService.welcome(chrome.storage.local, options.password, options.devMode);
         }
     });
     return hasResponse;

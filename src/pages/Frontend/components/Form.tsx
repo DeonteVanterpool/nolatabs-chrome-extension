@@ -1,7 +1,5 @@
-import React, {ChangeEvent, FormEvent, useState} from 'react';
+import React from 'react';
 import '../Frontend.css';
-import {UserService} from '../../services/user';
-import {User} from '../../models/user';
 
 type data = string | number | boolean
 

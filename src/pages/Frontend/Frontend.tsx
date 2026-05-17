@@ -9,7 +9,7 @@ import Main from './pages/Main';
 import Welcome from './pages/Welcome';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
-import {LoggedInMessage, WelcomedMessage} from '../models/messages';
+import {LoggedInMessage, WelcomedMessage, WelcomeMessage} from '../models/messages';
 
 type page = "signup" | "login" | "main" | "welcome"
 
@@ -21,22 +21,21 @@ const Frontend: React.FC<Props> = ({}: Props) => {
 
     const storage = chrome.storage.local;
 
-    const [userService] = useState<UserService>(new UserService(new UserStore(chrome.storage.local)));
-
     // On component mount, check if user is logged in (we want this to be async)
     useEffect(() => {
         const init = async () => {
             if (await chrome.runtime.sendMessage(WelcomedMessage.new()) === false) {
                 setCurrentPage("welcome");
-            } else if (await userService.get() !== null) {
-                setCurrentPage("login");
-            }  else if (await chrome.runtime.sendMessage(LoggedInMessage.new()) === true) { // check if user is logged in with background script. The background script is more reliable for this because it will persist across page reloads, while the content script will not
+            } else if (await chrome.runtime.sendMessage(LoggedInMessage.new()) === true) { // check if user is logged in with background script. The background script is more reliable for this because it will persist across page reloads, while the content script will not
+                console.log("loading main")
                 setCurrentPage("main");
-                setCurrentUser(await userService.get())
-            }
-        }
+                setCurrentUser(await UserService.get(storage))
+            } else if (await UserService.get(chrome.storage.local) !== null) {
+                console.log("loading login")
+                setCurrentPage("login");
+            }        }
         init();
-    }, [userService]);
+    }, []);
 
     function handleLogin() {
         setCurrentPage("main");
@@ -52,6 +51,11 @@ const Frontend: React.FC<Props> = ({}: Props) => {
         setCurrentPage("login");
     }
 
+    async function handleWelcome(password: string, devMode: boolean) {
+        await chrome.runtime.sendMessage(WelcomeMessage.new(password, devMode));
+        setCurrentPage("main")
+    }
+
     /*
     async function loadWasm() {
         await init('./mls_bg.wasm');  // Path relative to extension root
@@ -60,10 +64,10 @@ const Frontend: React.FC<Props> = ({}: Props) => {
     }
      */
 
-    const SignUpComponent = () => <Signup handleSignup={handleSignup} handleRenderLoginPage={handleRenderLoginPage} userService={userService}></Signup>;
-    const LoginComponent = () => <Login onLogin={handleLogin} renderSignup={handleRenderSignupPage} userService={userService}></Login>;
+    const SignUpComponent = () => <Signup handleSignup={handleSignup} handleRenderLoginPage={handleRenderLoginPage}></Signup>;
+    const LoginComponent = () => <Login onLogin={handleLogin} renderSignup={handleRenderSignupPage}></Login>;
     const MainComponent = () => <Main></Main>;
-    const WelcomeComponent = () => <Welcome handleRenderLoginPage={function (): void {
+    const WelcomeComponent = () => <Welcome handleSubmit={info => handleWelcome(info.password, info.devMode)} handleRenderLoginPage={function (): void {
         handleRenderLoginPage()
     } }></Welcome>;
 

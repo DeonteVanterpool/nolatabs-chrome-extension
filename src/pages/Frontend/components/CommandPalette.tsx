@@ -1,4 +1,4 @@
-import React, {ChangeEvent, FormEvent, useEffect, useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import '../Frontend.css';
 
 interface Props {
@@ -51,11 +51,9 @@ const CommandPalette: React.FC<Props> = ({commandHandler, commands, repoNames}: 
     let [textInput, setTextInput] = useState<string>("");
     let [suggestions, setSuggestions] = useState<string[]>([]);
     const suggest = (dtype: DataType, text: string): string[] => {
-        console.log(repoNames);
         if (dtype === "String") {
             return [];
         } else if (dtype === "RepositoryName") {
-            console.log(repoNames.filter((n) => n.startsWith(text)));
             return repoNames.filter((n) => n.startsWith(text));
         } else {
             return [];

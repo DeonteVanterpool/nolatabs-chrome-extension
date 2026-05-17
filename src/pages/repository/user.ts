@@ -1,4 +1,4 @@
-import {User, UserSettings} from '../models/user';
+import {User} from '../models/user';
 import {SettingsDTOV1} from './settings';
 
 export const LATEST_VERSION = 1;
@@ -70,13 +70,8 @@ class UserDTO {
 }
 
 export class UserStore {
-    storage: chrome.storage.StorageArea;
-    public constructor(storage: chrome.storage.StorageArea) {
-        this.storage = storage;
-    }
-
-    public async runMigrations() {
-        let user = await this.storage.get("user");
+    public static async runMigrations(storage: chrome.storage.StorageArea) {
+        let user = await storage.get("user");
         if (!user) {
             throw new Error("User not initialized");
         }
@@ -85,23 +80,23 @@ export class UserStore {
         }
     }
 
-    public async update(user: User) {
-        await this.storage.set({user: new UserDTO().serialize(user)});
+    public static async update(storage: chrome.storage.StorageArea, user: User) {
+        await storage.set({user: new UserDTO().serialize(user)});
     }
 
-    public async read(): Promise<UserStorage | null> {
-        this.runMigrations();
-        let storedUser = await this.storage.get("user") as {user: UserStorage};
+    public static async read(storage: chrome.storage.StorageArea): Promise<UserStorage | null> {
+        UserStore.runMigrations(storage);
+        let storedUser = await storage.get("user") as {user: UserStorage};
         if (!storedUser.user) {
             return null;
         }
         return storedUser.user;
     }
 
-    public async create(user: User) {
-        if (Object.keys(await this.storage.get("user")).length !== 0) {
+    public static async create(storage: chrome.storage.StorageArea, user: User) {
+        if (Object.keys(await storage.get("user")).length !== 0) {
             throw new Error("User already initialized");
         }
-        await this.update(user);
+        await UserStore.update(storage, user);
     }
 }
