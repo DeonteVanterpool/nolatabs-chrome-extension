@@ -14,7 +14,11 @@
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "noEmit": false,
-    "jsx": "react"
+    "jsx": "react",
+    "baseUrl": ".",
+    "paths": {
+      "@nolatabs/wasm": ["packages/library/wasm/index.js"]
+    }
   },
   "include": ["src"],
   "exclude": ["build", "node_modules"]

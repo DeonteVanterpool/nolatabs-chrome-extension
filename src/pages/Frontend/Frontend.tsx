@@ -1,82 +1,133 @@
-import React, {useEffect, useState} from 'react';
-// import init, { greet } from '../../wasm/mls/pkg/mls';
+import React, { useEffect, useState } from 'react';
+import { createHashRouter, RouterProvider, Navigate, Outlet, useNavigate, useLocation } from "react-router-dom";
 import './Frontend.css';
-import {User} from '../models/user';
-import {UserService} from '../services/user';
-import {UserStore} from '../repository/user';
-import ViewSwitcher from './components/ViewSwitcher';
+import { User } from '../models/user';
+import { UserService } from '../services/user';
 import Main from './pages/Main';
 import Welcome from './pages/Welcome';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
-import {LoggedInMessage, WelcomedMessage, WelcomeMessage} from '../models/messages';
-
-type page = "signup" | "login" | "main" | "welcome"
+import { LoggedInMessage, WelcomedMessage, WelcomeMessage } from '../models/messages';
 
 interface Props {}
 
-const Frontend: React.FC<Props> = ({}: Props) => {
-    const [user, setCurrentUser] = useState<User | null>(null);
-    const [currentPage, setCurrentPage] = useState(user ? "login" : "signup");
+const SignupWrapper: React.FC = () => {
+    const navigate = useNavigate();
+    
+    const handleSignup = async (user: User) => {
+        // Force a hard check or pass state if your backend requires it
+        navigate("/", { replace: true });
+    };
 
-    const storage = chrome.storage.local;
+    return <Signup handleSignup={handleSignup} handleRenderLoginPage={() => navigate("/login")} />;
+};
 
-    // On component mount, check if user is logged in (we want this to be async)
+const LoginWrapper: React.FC = () => {
+    const navigate = useNavigate();
+    return <Login onLogin={() => navigate("/", { replace: true })} renderSignup={() => navigate("/signup")} />;
+};
+
+const WelcomeWrapper: React.FC = () => {
+    const navigate = useNavigate();
+
+    const handleWelcome = async (info: { password: string; devMode: boolean }) => {
+        await chrome.runtime.sendMessage(WelcomeMessage.new(info.password, info.devMode));
+        navigate("/", { replace: true });
+    };
+
+    return <Welcome handleSubmit={handleWelcome} handleRenderLoginPage={() => navigate("/login")} />;
+};
+
+// --- THE REFACTORED AUTH GUARDIAN ---
+const AuthGuardian: React.FC = () => {
+    const [isLoading, setIsLoading] = useState(true);
+    const [authState, setAuthState] = useState<{
+        isWelcomed: boolean;
+        isLoggedIn: boolean;
+        hasSavedUser: boolean;
+    }>({ isWelcomed: false, isLoggedIn: false, hasSavedUser: false });
+
+    const location = useLocation();
+
     useEffect(() => {
-        const init = async () => {
-            if (await chrome.runtime.sendMessage(WelcomedMessage.new()) === false) {
-                setCurrentPage("welcome");
-            } else if (await chrome.runtime.sendMessage(LoggedInMessage.new()) === true) { // check if user is logged in with background script. The background script is more reliable for this because it will persist across page reloads, while the content script will not
-                console.log("loading main")
-                setCurrentPage("main");
-                setCurrentUser(await UserService.get(storage))
-            } else if (await UserService.get(chrome.storage.local) !== null) {
-                console.log("loading login")
-                setCurrentPage("login");
-            }        }
-        init();
-    }, []);
+        const checkAuthStatus = async () => {
+            const storage = chrome.storage.local;
+            
+            try {
+                const isWelcomed = await chrome.runtime.sendMessage(WelcomedMessage.new());
+                const isLoggedIn = await chrome.runtime.sendMessage(LoggedInMessage.new());
+                const savedUser = await UserService.get(storage);
 
-    function handleLogin() {
-        setCurrentPage("main");
-    }
-    function handleSignup(user: User) {
-        setCurrentUser(user);
-        handleLogin();
-    }
-    function handleRenderSignupPage() {
-        setCurrentPage("signup");
-    }
-    function handleRenderLoginPage() {
-        setCurrentPage("login");
-    }
+                setAuthState({
+                    isWelcomed: !!isWelcomed,
+                    isLoggedIn: !!isLoggedIn,
+                    hasSavedUser: savedUser !== null
+                });
+            } catch (error) {
+                console.error("Failed to initialize auth state:", error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
 
-    async function handleWelcome(password: string, devMode: boolean) {
-        await chrome.runtime.sendMessage(WelcomeMessage.new(password, devMode));
-        setCurrentPage("main")
+        checkAuthStatus();
+    }, [location.pathname]); // Re-run evaluation whenever the route changes!
+
+    if (isLoading) {
+        return <div className="loading-screen">Loading secure environment...</div>; 
     }
 
-    /*
-    async function loadWasm() {
-        await init('./mls_bg.wasm');  // Path relative to extension root
-        // Now you can use your Rust functions
-        // greet("deonte")
+    // Determine the absolute ground-truth destination based on actual status
+    let correctPath = "/signup";
+    if (!authState.isWelcomed) {
+        correctPath = "/welcome";
+    } else if (authState.isLoggedIn) {
+        correctPath = "/";
+    } else if (authState.hasSavedUser) {
+        correctPath = "/login";
     }
-     */
 
-    const SignUpComponent = () => <Signup handleSignup={handleSignup} handleRenderLoginPage={handleRenderLoginPage}></Signup>;
-    const LoginComponent = () => <Login onLogin={handleLogin} renderSignup={handleRenderSignupPage}></Login>;
-    const MainComponent = () => <Main></Main>;
-    const WelcomeComponent = () => <Welcome handleSubmit={info => handleWelcome(info.password, info.devMode)} handleRenderLoginPage={function (): void {
-        handleRenderLoginPage()
-    } }></Welcome>;
+    // If the user is at the root "/" but shouldn't be, redirect them
+    if (location.pathname === "/" && !authState.isLoggedIn) {
+        return <Navigate to={correctPath} replace />;
+    }
 
-    return <ViewSwitcher pages={[
-        {name: "signup", component: SignUpComponent},
-        {name: "login", component: LoginComponent},
-        {name: "main", component: MainComponent},
-        {name: "welcome", component: WelcomeComponent},
-    ]} selectedPage={currentPage}></ViewSwitcher>
+    // If they are trying to access auth pages (login/signup) but are already logged in, send them home
+    if (location.pathname !== "/" && authState.isLoggedIn) {
+        return <Navigate to="/" replace />;
+    }
+
+    // Otherwise, render the requested nested route
+    return <Outlet />;
+};
+
+const router = createHashRouter([
+    {
+        path: "/",
+        element: <AuthGuardian />,
+        children: [
+            {
+                index: true,
+                element: <Main />
+            },
+            {
+                path: "signup",
+                element: <SignupWrapper />
+            },
+            {
+                path: "login",
+                element: <LoginWrapper />
+            },
+            {
+                path: "welcome",
+                element: <WelcomeWrapper />
+            }
+        ]
+    }
+]);
+
+const Frontend: React.FC<Props> = () => {
+    return <RouterProvider router={router} />;
 };
 
 export default Frontend;
