@@ -34,8 +34,6 @@ chrome.runtime.onMessage.addListener((message: Message, _sender, sendResponse): 
             let options = message.options as CommitMessageOptions;
             let tabs = await BrowserWindow.getUnpinnedTabs();
 
-            console.log("Raorestn")
-
             let commit = await CommitService.commit(chrome.storage.local, options.repo, "me", options.message, tabs, ["main"]);
 
             sendResponse(commit);
@@ -57,8 +55,6 @@ chrome.runtime.onMessage.addListener((message: Message, _sender, sendResponse): 
 
             RepositoryService.moveRepository(chrome.storage.local, options.repo, newName);
         } else if (message.action === "welcomed") {
-            console.log("aieorstn")
-            console.log(await UserService.welcomed(chrome.storage.local))
             sendResponse(await UserService.welcomed(chrome.storage.local));
         } else if (message.action === "welcome") {
             let options = message.options as WelcomeMessageOptions;

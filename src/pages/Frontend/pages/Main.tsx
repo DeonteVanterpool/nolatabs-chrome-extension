@@ -94,71 +94,10 @@ const Main: React.FC<Props> = ({}: Props) => {
     }
 
     return <div className="Main">
-        <Sidebar repos={[...repos]} handleNewRepo={handleInitRepo} handleOpenRepo={handleOpenRepo} />
+        <Sidebar repos={[...repos]} handleNewRepo={handleInitRepo} handleOpenRepo={handleOpenRepo} handleCommit={handleCommit} handleMvRepo={handleMvRepo} handleMkRepo={handleMkRepo} handleInitRepo={handleInitRepo} handleRmRepo={handleRmRepo} selectedRepo={selectedRepo} />
         <div className="content">
             {selectedRepo ? selectedRepo.name : "no repo selected"}
             <button onClick={handleCommit}>Commit</button>
-            <CommandPalette commandHandler={async (command: string[]) => {
-                console.log(command);
-                if (command[0] === "mkdir") {
-                    await handleMkRepo(command[1]);
-                } else if (command[0] === "init") {
-                    await handleInitRepo(command[1]);
-                } else if (command[0] === "cd") {
-                    let repo = repos.find((r) => r.name === command[1]);
-                    if (repo) {
-                        await handleOpenRepo(repo);
-                    } else {
-                        alert("Repository not found");
-                    }
-                } else if (command[0] === "commit") {
-                    await handleCommit();
-                } else if (command[0] === "rm") {
-                    let repo = repos.find((r) => r.name === command[1]);
-                    if (repo) {
-                        handleRmRepo(repo);
-                    } else {
-                        alert("Repository not found");
-                    }
-                } else if (command[0] === "help") {
-                    alert("Available commands:\n- mkdir [name]: create a new repository\n- init [name]: create a new repository and commit the current tabs\n- cd [name]: open a repository\n- rm [name]: delete a repository\n- commit: commit the current tabs to the currently opened repository");
-                } else if (command[0] === "mv") {
-                    let repo = repos.find((r) => r.name === command[1]);
-                    if (command[1] === ".") {
-                        repo = selectedRepo;
-                    }
-
-                    if (repo) {
-                        await handleMvRepo(repo, command[2]);
-                    } else {
-                        alert("Repository not found");
-                    }
-                }
-                else {
-                    alert("Unknown command");
-                }
-            }} commands={[
-                {
-                    name: "commit",
-                    args: ["String"],
-                },
-                {
-                    name: "cd",
-                    args: ["RepositoryName"],
-                },
-                {
-                    name: "rm",
-                    args: ["RepositoryName"],
-                },
-                {
-                    name: "init",
-                    args: ["String"],
-                },
-                {
-                    name: "mkdir",
-                    args: ["String"],
-                }
-            ]} repoNames={repos.map((r) => r.name)} />
         </div>
     </div>;
 };
