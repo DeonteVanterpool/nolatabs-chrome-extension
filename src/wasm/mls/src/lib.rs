@@ -1,4 +1,5 @@
 use lazy_static::lazy_static;
+use tsify::Tsify;
 use openmls::prelude::tls_codec::Serialize as SerializeOpenMLS;
 use openmls::prelude::*;
 use openmls_basic_credential::SignatureKeyPair;
@@ -201,11 +202,11 @@ pub fn accept_invitation(val: JsValue) -> Result<JsValue, JsError> {
     return Ok(serde_wasm_bindgen::to_value(group.group_id())?);
 }
 
-#[wasm_bindgen]
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Tsify)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
 pub struct ProcessedMessage {
     kind: String,
-    pub content: HashMap<String, Vec<u8>>,
+    content: HashMap<String, Vec<u8>>,
 }
 
 impl ProcessedMessage {
@@ -222,7 +223,7 @@ impl ProcessedMessage {
 
 // message should be passed as an argument
 #[wasm_bindgen]
-pub fn process_message(val: JsValue) -> Result<JsValue, JsError> {
+pub fn process_message(val: JsValue) -> Result<ProcessedMessage, JsError> {
     let mut info: MessageInfo = serde_wasm_bindgen::from_value(val)?;
     let mut group = get_group(&info.group_id).ok_or_else(|| JsError::new("Error finding group"))?;
 
@@ -250,7 +251,7 @@ pub fn process_message(val: JsValue) -> Result<JsValue, JsError> {
         _ => panic!("Error"),
     };
 
-    return Ok(serde_wasm_bindgen::to_value(&message)?);
+    return Ok(message);
 }
 
 #[wasm_bindgen]
