@@ -9,7 +9,8 @@
   },
   "devContentSecurityPolicy": "script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval'",
   "scripts": {
-    "build": "node utils/build.js",
+    "build": "$npm_execpath run build:wasm && node utils/build.js",
+    "build:wasm": "wasm-pack build src/wasm/mls",
     "start": "node utils/webserver.js",
     "prettier": "prettier --write '**/*.{js,jsx,ts,tsx,json,css,scss,md}'",
     "test": "jest"
@@ -41,8 +42,10 @@
     "path-browserify": "^1.0.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-router-dom": "^7.15.1",
     "stream-browserify": "^3.0.0",
-    "util": "^0.12.5"
+    "util": "^0.12.5",
+    "vite-plugin-wasm": "^3.0.0"
   },
   "devDependencies": {
     "@babel/core": "^7.20.12",
