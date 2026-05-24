@@ -1,4 +1,4 @@
-import React, {ChangeEvent, FormEvent, useState} from 'react';
+import React, {ChangeEvent, useState} from 'react';
 import '../Frontend.css';
 import {Repository} from '../../models/repository';
 import CommandPalette from './CommandPalette';
@@ -19,11 +19,6 @@ const Sidebar: React.FC<Props> = ({repos, handleNewRepo, handleOpenRepo, handleM
     const handleNewRepoNameChange = (e: ChangeEvent<HTMLInputElement>) => {
         setNewRepoName(e.target.value);
     };
-    const handleClick = () => {
-        let repoName = newRepoName;
-        handleNewRepo(repoName);
-        setNewRepoName("")
-    }
 
     const handleRepoClick = (repo: Repository) => {
         handleOpenRepo(repo);
@@ -31,7 +26,6 @@ const Sidebar: React.FC<Props> = ({repos, handleNewRepo, handleOpenRepo, handleM
 
     return <ul className="Sidebar">
             <CommandPalette commandHandler={async (command: string[]) => {
-                console.log(command);
                 if (command[0] === "mkdir") {
                     await handleMkRepo(command[1]);
                 } else if (command[0] === "init") {

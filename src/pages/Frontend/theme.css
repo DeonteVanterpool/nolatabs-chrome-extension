@@ -6,5 +6,6 @@
   --border-radius: 4px;
   --background: #fbf9ff;
   --foreground: #210124;
+  font-size: 1rem;
   --font-family: system-ui, sans-serif;
 }
