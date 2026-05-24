@@ -3,8 +3,8 @@ import '../Frontend.css';
 import {RepositoryStore} from '../../repository/repository';
 import {Repository} from '../../models/repository';
 import {CDMessage, CommitMessage, MkDirMessage, MVMessage, RmMessage} from '../../models/messages';
-import CommandPalette from '../components/CommandPalette';
 import Sidebar from '../components/Sidebar';
+import Button from '../components/Button/Button';
 
 interface Props {
 }
@@ -97,7 +97,7 @@ const Main: React.FC<Props> = ({}: Props) => {
         <Sidebar repos={[...repos]} handleNewRepo={handleInitRepo} handleOpenRepo={handleOpenRepo} handleCommit={handleCommit} handleMvRepo={handleMvRepo} handleMkRepo={handleMkRepo} handleInitRepo={handleInitRepo} handleRmRepo={handleRmRepo} selectedRepo={selectedRepo} />
         <div className="content">
             {selectedRepo ? selectedRepo.name : "no repo selected"}
-            <button onClick={handleCommit}>Commit</button>
+            <Button onClick={handleCommit} label="Commit"/>
         </div>
     </div>;
 };

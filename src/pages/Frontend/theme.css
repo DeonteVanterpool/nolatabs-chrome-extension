@@ -1,0 +1,10 @@
+:root {
+  --primary: #ff1aeb;
+  --secondary: #ae0014;
+  --text-light: #fbf9ff;
+  --text-dark: #210124;
+  --border-radius: 4px;
+  --background: #fbf9ff;
+  --foreground: #210124;
+  --font-family: system-ui, sans-serif;
+}

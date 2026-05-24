@@ -1,14 +1,16 @@
 import React from "react";
 
+import './Button.css'
+
 interface Props {
-    style?: "contained" | "outlined",
-    text?: string,
+    variant?: "contained" | "outlined",
+    label?: string,
     icon?: string, // svg path
     onClick: () => void;
 }
 
-const Button: React.FC<Props> = ({text, onClick}: Props) => {
-    return <div><button onClick={onClick}>{text}</button></div>
+const Button: React.FC<Props> = ({label, onClick, variant = "contained"}: Props) => {
+    return <button onClick={onClick} className={variant}>{label}</button>
 };
 
 export default Button;

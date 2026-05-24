@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { createHashRouter, RouterProvider, Navigate, Outlet, useNavigate, useLocation } from "react-router-dom";
-import './Frontend.css';
+import './Frontend.css';import './theme.css';
+import './theme.css';
 import { User } from '../models/user';
 import { UserService } from '../services/user';
 import Main from './pages/Main';
