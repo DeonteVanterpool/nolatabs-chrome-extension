@@ -3,13 +3,24 @@ import '../Frontend.css';
 import { RepositoryStore } from '../../repository/repository';
 import { Repository } from '../../models/repository';
 import { CDMessage, CommitMessage, MkDirMessage, MVMessage, RmMessage } from '../../models/messages';
-import Sidebar from '../components/Sidebar';
+import Sidebar from '../components/Sidebar/Sidebar';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 interface Props {}
 
 const Main: React.FC<Props> = () => {
     const [repos, setRepos] = useState<Repository[]>([]);
-    const [selectedRepo, setSelectedRepo] = useState<Repository>();
+    
+    const navigate = useNavigate();
+    const { search } = useLocation();
+    
+    const searchParams = new URLSearchParams(search);
+    const owner = searchParams.get("repo-owner");
+    const name = searchParams.get("repo-name");
+    
+    const selectedRepo: Repository | undefined = name && owner 
+        ? { owner, name, branches: [] } 
+        : undefined;
 
     async function fetchRepos() {
         if (!(await RepositoryStore.initialized(chrome.storage.local))) {
@@ -23,34 +34,24 @@ const Main: React.FC<Props> = () => {
 
     useEffect(() => {
         fetchRepos();
-
-        function fetchFromUrlParams() {
-            const url = window.location.href;
-            if (url.includes("?")) {
-                const params = new URLSearchParams(url.split("?")[1]);
-                if (params.has("repo-name") && params.has("repo-owner")) {
-                    const repo: Repository = {
-                        owner: params.get("repo-owner")!,
-                        name: params.get("repo-name")!,
-                        branches: []
-                    };
-                    setSelectedRepo(repo);
-                }
-            }
-        }
-        fetchFromUrlParams();
     }, []);
 
-    const handleInitRepo = async (name: string) => {
-        const repo: Repository = { owner: "me", name: name, branches: [] };
+    useEffect(() => {
+        if (selectedRepo) {
+            chrome.runtime.sendMessage(CDMessage.new(selectedRepo));
+        }
+    }, [name, owner]);
+
+    const handleInitRepo = async (repoName: string) => {
+        const repo: Repository = { owner: "me", name: repoName, branches: [] };
         await RepositoryStore.create(chrome.storage.local, repo);
         await handleCommitToRepo(repo);
         await handleOpenRepo(repo);
     };
 
-    const handleMkRepo = async (name: string) => {
-        const repo: Repository = { owner: "me", name: name, branches: [] };
-        await chrome.runtime.sendMessage(MkDirMessage.new(name));
+    const handleMkRepo = async (repoName: string) => {
+        const repo: Repository = { owner: "me", name: repoName, branches: [] };
+        await chrome.runtime.sendMessage(MkDirMessage.new(repoName));
         await handleOpenRepo(repo);
     };
 
@@ -58,27 +59,23 @@ const Main: React.FC<Props> = () => {
         await chrome.runtime.sendMessage(RmMessage.new(repo));
         await fetchRepos();
         
-        if (selectedRepo?.name === repo.name && selectedRepo?.owner === repo.owner) {
-            setSelectedRepo(undefined);
+        if (name === repo.name && owner === repo.owner) {
+            navigate(""); 
         }
     };
 
     const handleOpenRepo = async (repo: Repository) => {
         await chrome.runtime.sendMessage(CDMessage.new(repo));
         
-        const url = window.location.href;
-        const params = new URLSearchParams(url.split("?")[1] || "");
-        params.set("repo-name", repo.name);
-        params.set("repo-owner", repo.owner);
-        window.location.href = url.split("?")[0] + "?" + params.toString();
-        
+        navigate(`?repo-name=${encodeURIComponent(repo.name)}&repo-owner=${encodeURIComponent(repo.owner)}`);
         return repo;
     };
 
     const handleMvRepo = async (repo: Repository, newName: string) => {
         await chrome.runtime.sendMessage(MVMessage.new(repo, newName));
+        await fetchRepos();
 
-        window.location.href = window.location.href.split("?")[0] + "?repo-name=" + newName + "&repo-owner=" + repo.owner;
+        navigate(`?repo-name=${encodeURIComponent(newName)}&repo-owner=${encodeURIComponent(repo.owner)}`);
     };
 
     const handleCommitToRepo = async (repo: Repository) => {

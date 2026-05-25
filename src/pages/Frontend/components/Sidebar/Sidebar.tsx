@@ -1,7 +1,9 @@
 import React, {ChangeEvent, useState} from 'react';
-import '../Frontend.css';
-import {Repository} from '../../models/repository';
-import CommandPalette from './CommandPalette';
+import Logo from '../../../../assets/img/logo.svg';
+import {Repository} from '../../../models/repository';
+import CommandPalette from '../CommandPalette';
+import './Sidebar.css';
+
 interface Props {
     repos: Repository[];
     handleNewRepo: (name: string) => void;
@@ -24,7 +26,8 @@ const Sidebar: React.FC<Props> = ({repos, handleNewRepo, handleOpenRepo, handleM
         handleOpenRepo(repo);
     }
 
-    return <ul className="Sidebar">
+    return <div className="sidebar">
+        <Logo className="logo" />
         <CommandPalette commandHandler={async (command: string[]) => {
             if (command[0] === "mkdir") {
                 await handleMkRepo(command[1]);
@@ -85,10 +88,15 @@ const Sidebar: React.FC<Props> = ({repos, handleNewRepo, handleOpenRepo, handleM
                 args: ["String"],
             }
         ]} repoNames={repos.map((r) => r.name)} />
-        {repos.map((repo) => {
-            return <li onClick={() => handleRepoClick(repo)}>{repo.name}</li>;
-        })}
-    </ul>;
+        <div className="repositories">
+        Repositories:
+        </div>
+        <ul className="Sidebar">
+            {repos.map((repo) => {
+                return <li onClick={() => handleRepoClick(repo)}>{repo.name}</li>;
+            })}
+        </ul>
+    </div>;
 };
 
 export default Sidebar;

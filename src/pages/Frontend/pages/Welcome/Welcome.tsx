@@ -60,7 +60,7 @@ const Welcome: React.FC<Props> = ({handleRenderLoginPage, handleSubmit}) => {
                         </div>
                         </form>
                         <div className="back-button">
-                            <Button onClick={handleBack} variant="borderless" icon={<BackIcon />} />
+                            <Button onClick={handleBack} variant="borderless" icon={<BackIcon />} label="Back" />
                         </div>
                     </div>
                 );
@@ -72,8 +72,8 @@ const Welcome: React.FC<Props> = ({handleRenderLoginPage, handleSubmit}) => {
                         <LogoIcon className="logo" />
                         <p>Which command style feels more natural to you?</p>
                         <div className="yesno">
-                            <Button onClick={() => setDevMode(false)} label="Option 1 (Plain)" variant={!devMode ? "contained" : "outlined"} theme="foreground" />
-                            <Button onClick={() => setDevMode(true)} label="Option 2 (Dev)" variant={devMode ? "contained" : "outlined"} theme="foreground" />
+                            <Button onClick={() => setDevMode(false)} label="Option 1 (Plain)" variant={!devMode ? "contained" : "outlined"} theme="secondary" />
+                            <Button onClick={() => setDevMode(true)} label="Option 2 (Dev)" variant={devMode ? "contained" : "outlined"} theme="secondary" />
                         </div>
                         <Button onClick={() => handleSubmit({password, devMode})} label="Done" />
                     </div>

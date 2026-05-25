@@ -10,7 +10,7 @@ interface Props {
     onChange?: (e: ChangeEvent<HTMLInputElement>) => void,
 }
 
-const Button: React.FC<Props> = ({variant, placeholder, onSubmit, value, onChange}: Props) => {
+const Textbox: React.FC<Props> = ({variant, placeholder, onSubmit, value, onChange}: Props) => {
     let [val, setVal] = useState(value ? value : "");
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -42,4 +42,4 @@ const Button: React.FC<Props> = ({variant, placeholder, onSubmit, value, onChang
     }
 };
 
-export default Button;
+export default Textbox;
