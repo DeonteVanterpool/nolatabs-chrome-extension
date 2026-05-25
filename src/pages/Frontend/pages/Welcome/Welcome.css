@@ -1,0 +1,37 @@
+.page {
+    width: 100vw;
+    height: 100vh;
+    background-color: var(--background);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    text-align: center;
+}
+
+.yesno {
+    display: flex;
+    gap: 10px;
+    padding: 20px;
+}
+
+h1 {
+    background-color: var(--foreground);
+    color: var(--background);
+    padding: 5px 10px;
+    font-size: 2rem;
+}
+
+p {
+    width: 700px;
+    padding: 0 20px;
+}
+
+.logo {
+    padding: 50px;
+}
+
+svg {
+    width: 250px;
+}
+

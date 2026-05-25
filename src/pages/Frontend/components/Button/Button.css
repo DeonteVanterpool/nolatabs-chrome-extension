@@ -10,6 +10,8 @@ button {
     text-align: center;
     outline: none;
     border: none;
+    cursor: pointer;
+    font-size: 1rem;
 }
 
 button.outlined {

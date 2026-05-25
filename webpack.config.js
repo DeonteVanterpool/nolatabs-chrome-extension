@@ -23,7 +23,7 @@ var fileExtensions = [
     'gif',
     'eot',
     'otf',
-    'svg',
+    // 'svg',
     'ttf',
     'woff',
     'woff2',
@@ -145,6 +145,11 @@ var options = {
                 // Error: WebAssembly module is included in initial chunk.
                 type: 'javascript/auto',
             },
+            {
+                test: /\.svg$/i,
+                issuer: /\.[jt]sx?$/,
+                use: ['@svgr/webpack'],
+            },
         ],
         noParse: /\.wasm$/,
     },
@@ -203,6 +208,15 @@ var options = {
             patterns: [
                 {
                     from: 'src/assets/img/icon-128.png',
+                    to: path.join(__dirname, 'build'),
+                    force: true,
+                },
+            ],
+        }),
+        new CopyWebpackPlugin({
+            patterns: [
+                {
+                    from: 'src/assets/img/logo.svg',
                     to: path.join(__dirname, 'build'),
                     force: true,
                 },

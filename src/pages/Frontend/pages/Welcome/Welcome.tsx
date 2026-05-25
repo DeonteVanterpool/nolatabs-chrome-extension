@@ -1,6 +1,7 @@
 import React, {useState} from 'react';
-import Button from '../components/Button/Button';
-import '../Frontend.css';
+import Button from '../../components/Button/Button';
+import './Welcome.css';
+import LogoIcon from '../../../../assets/img/logo.svg';
 
 interface SetupInfo {
     password: string;
@@ -29,20 +30,22 @@ const Welcome: React.FC<Props> = ({handleRenderLoginPage, handleSubmit}) => {
         switch (currentPage) {
             case "welcome":
                 return (
-                    <div>
+                    <div className="page">
                         <h1>Welcome To</h1>
-                        <h2>NolaTabs</h2>
+                        <LogoIcon className="logo" />
                         <p>Do you have a cloud account you want to log into?</p>
-                        <button onClick={handleRenderLoginPage}>Yes</button>
-                        <button onClick={handleCreatePassword}>No</button>
+                        <div className="yesno">
+                            <Button onClick={handleRenderLoginPage} label="Yes" />
+                            <Button onClick={handleCreatePassword} label="No" />
+                        </div>
                     </div>
                 );
 
             case "createpassword":
                 return (
-                    <div>
+                    <div className="page">
                         <h1>Create Password</h1>
-                        <h2>NolaTabs</h2>
+                        <LogoIcon className="logo" />
                         <p>
                             You are in full control of your privacy. Your data is encrypted with a
                             password you create, before it's stored on your device or in the cloud.
@@ -63,13 +66,14 @@ const Welcome: React.FC<Props> = ({handleRenderLoginPage, handleSubmit}) => {
 
             case "commandStyle":
                 return (
-                    <div>
+                    <div className="page">
                         <h1>Welcome To</h1>
-                        <h2>NolaTabs</h2>
+                        <LogoIcon className="logo" />
                         <p>Which command style feels more natural to you?</p>
-                        {/* Toggling the devMode boolean */}
+                        <div className="yesno">
                         <Button onClick={() => setDevMode(false)} label="Option 1 (Plain)" variant="outlined" />
                         <Button onClick={() => setDevMode(true)} label="Option 2 (Dev)" variant="outlined" />
+                    </div>
                         <Button onClick={() => handleSubmit({password, devMode, })} label="Done" />
                     </div>
                 );

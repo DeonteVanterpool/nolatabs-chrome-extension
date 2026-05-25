@@ -5,7 +5,7 @@ import './theme.css';
 import { User } from '../models/user';
 import { UserService } from '../services/user';
 import Main from './pages/Main';
-import Welcome from './pages/Welcome';
+import Welcome from './pages/Welcome/Welcome';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import { LoggedInMessage, WelcomedMessage, WelcomeMessage } from '../models/messages';
@@ -39,7 +39,6 @@ const WelcomeWrapper: React.FC = () => {
     return <Welcome handleSubmit={handleWelcome} handleRenderLoginPage={() => navigate("/login")} />;
 };
 
-// --- THE REFACTORED AUTH GUARDIAN ---
 const AuthGuardian: React.FC = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [authState, setAuthState] = useState<{
