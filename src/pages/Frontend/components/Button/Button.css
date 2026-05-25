@@ -14,8 +14,34 @@ button {
     font-size: 1rem;
 }
 
+button.secondary {
+    background-color: var(--secondary);
+}
+
+button.foreground {
+    background-color: var(--foreground);
+    border: 4px solid black;
+}
+
 button.outlined {
     background-color: var(--background);
+    color: var(--primary);
+    border: 2px solid var(--primary);
+}
+
+button.outlined.foreground {
     color: var(--foreground);
     border: 2px solid var(--foreground);
 }
+
+button.outlined.secondary {
+    color: var(--secondary);
+    border: 2px solid var(--secondary);
+}
+
+button.borderless {
+    border: none;
+    background-color: transparent;
+    padding: 0;
+}
+

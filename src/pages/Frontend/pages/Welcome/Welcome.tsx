@@ -2,6 +2,8 @@ import React, {useState} from 'react';
 import Button from '../../components/Button/Button';
 import './Welcome.css';
 import LogoIcon from '../../../../assets/img/logo.svg';
+import BackIcon from '../../../../assets/img/back-arrow.svg';
+import Textbox from '../../components/Textbox/Textbox';
 
 interface SetupInfo {
     password: string;
@@ -47,20 +49,19 @@ const Welcome: React.FC<Props> = ({handleRenderLoginPage, handleSubmit}) => {
                         <h1>Create Password</h1>
                         <LogoIcon className="logo" />
                         <p>
-                            You are in full control of your privacy. Your data is encrypted with a
-                            password you create, before it's stored on your device or in the cloud.
-                            I do not want your data; my goal is to ensure you are the only one who
-                            can ever see it. To get started, please create your password.
+                            Your data is encrypted with a password, before it's stored on your device or in the cloud. I don't want your data. I just want to ensure you are the only one who can ever see it. To get started, please create your password.
                         </p>
-                        <input
-                            type="password"
-                            placeholder="Password..."
-                            value={password}
-                            onChange={e => setPassword(e.target.value)}
-                            autoFocus // Automatically regains focus just in case
-                        />
-                        <Button onClick={handleContinue} label="Continue" />
-                        <Button onClick={handleBack} label="Back" />
+                        <form>
+                        <div className="password-input">
+                            <Textbox variant="password" placeholder="Password..." onChange={(e) => setPassword(e.target.value)} onSubmit={(text) => {setPassword(text); console.log(text); console.log("continuing"); handleContinue()}} />
+                        </div>
+                        <div className="continue-button">
+                            <Button onClick={handleContinue} label="Continue" />
+                        </div>
+                        </form>
+                        <div className="back-button">
+                            <Button onClick={handleBack} variant="borderless" icon={<BackIcon />} />
+                        </div>
                     </div>
                 );
 
@@ -71,10 +72,10 @@ const Welcome: React.FC<Props> = ({handleRenderLoginPage, handleSubmit}) => {
                         <LogoIcon className="logo" />
                         <p>Which command style feels more natural to you?</p>
                         <div className="yesno">
-                        <Button onClick={() => setDevMode(false)} label="Option 1 (Plain)" variant="outlined" />
-                        <Button onClick={() => setDevMode(true)} label="Option 2 (Dev)" variant="outlined" />
-                    </div>
-                        <Button onClick={() => handleSubmit({password, devMode, })} label="Done" />
+                            <Button onClick={() => setDevMode(false)} label="Option 1 (Plain)" variant={!devMode ? "contained" : "outlined"} theme="foreground" />
+                            <Button onClick={() => setDevMode(true)} label="Option 2 (Dev)" variant={devMode ? "contained" : "outlined"} theme="foreground" />
+                        </div>
+                        <Button onClick={() => handleSubmit({password, devMode})} label="Done" />
                     </div>
                 );
 

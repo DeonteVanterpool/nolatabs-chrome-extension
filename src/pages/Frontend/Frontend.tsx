@@ -6,7 +6,7 @@ import { User } from '../models/user';
 import { UserService } from '../services/user';
 import Main from './pages/Main';
 import Welcome from './pages/Welcome/Welcome';
-import Login from './pages/Login';
+import Login from './pages/Login/Login';
 import Signup from './pages/Signup';
 import { LoggedInMessage, WelcomedMessage, WelcomeMessage } from '../models/messages';
 
@@ -25,7 +25,7 @@ const SignupWrapper: React.FC = () => {
 
 const LoginWrapper: React.FC = () => {
     const navigate = useNavigate();
-    return <Login onLogin={() => navigate("/", { replace: true })} renderSignup={() => navigate("/signup")} />;
+    return <Login onLogin={() => {navigate("/"); console.log("nvigating")}} renderSignup={() => navigate("/signup")} />;
 };
 
 const WelcomeWrapper: React.FC = () => {
@@ -33,7 +33,7 @@ const WelcomeWrapper: React.FC = () => {
 
     const handleWelcome = async (info: { password: string; devMode: boolean }) => {
         await chrome.runtime.sendMessage(WelcomeMessage.new(info.password, info.devMode));
-        navigate("/", { replace: true });
+        navigate("/login");
     };
 
     return <Welcome handleSubmit={handleWelcome} handleRenderLoginPage={() => navigate("/login")} />;
