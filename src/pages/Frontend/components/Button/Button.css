@@ -46,6 +46,10 @@ button.borderless {
     padding: 0;
 }
 
+button.borderless.foreground {
+    color: var(--foreground);
+}
+
 svg {
     fill: currentColor;
     margin-right: 10px;

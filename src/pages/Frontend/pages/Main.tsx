@@ -35,7 +35,7 @@ const Main: React.FC<Props> = () => {
     }, []);
 
     useEffect(() => {
-        if (selectedRepo) {
+        if (selectedRepo && (owner !== selectedRepo.owner || name !== selectedRepo.name)) {
             chrome.runtime.sendMessage(CDMessage.new(selectedRepo));
         }
     }, [name, owner]);

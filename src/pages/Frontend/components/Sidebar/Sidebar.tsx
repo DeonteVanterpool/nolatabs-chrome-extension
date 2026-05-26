@@ -3,6 +3,7 @@ import Logo from '../../../../assets/img/logo.svg';
 import {Repository} from '../../../models/repository';
 import CommandPalette from '../CommandPalette';
 import './Sidebar.css';
+import Button from '../Button/Button';
 
 interface Props {
     repos: Repository[];
@@ -89,13 +90,20 @@ const Sidebar: React.FC<Props> = ({repos, handleNewRepo, handleOpenRepo, handleM
             }
         ]} repoNames={repos.map((r) => r.name)} />
         <div className="repositories">
-        Repositories:
+            Repositories:
         </div>
         <ul className="Sidebar">
             {repos.map((repo) => {
+                if (selectedRepo && repo.name === selectedRepo.name && repo.owner === selectedRepo.owner) {
+                    return <li className="selected" onClick={() => handleRepoClick(repo)}>{repo.name}</li>
+                }
                 return <li onClick={() => handleRepoClick(repo)}>{repo.name}</li>;
             })}
         </ul>
+        <div className="bottom">
+            <Button onClick={() => {}} label="Settings" variant="borderless" theme="foreground" />
+            <Button onClick={() => {}} label="Log Out" variant="borderless" theme="primary" />
+        </div>
     </div>;
 };
 

@@ -22,13 +22,33 @@
 
 ul {
     padding: 0;
-    align-self: flex-start;
     list-style: none;
     height: fit-content;
     padding: 10px 30px;
+    max-height: 300px;
+    overflow: auto;
 }
 
 li {
     width: fit-content;
+    cursor: pointer;
+    margin: 5px 0;
 }
 
+li:hover {
+    color: var(--secondary);
+}
+
+li.selected {
+    color: var(--primary);
+    border-bottom: 3px solid var(--primary);
+}
+
+.bottom {
+    align-self: start;
+    display: flex;
+    flex-direction: column;
+    justify-content: start;
+    padding: 40px;
+    padding-top: 0;
+}
