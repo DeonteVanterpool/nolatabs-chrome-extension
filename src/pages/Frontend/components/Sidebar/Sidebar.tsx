@@ -1,7 +1,6 @@
-import React, {ChangeEvent, useState} from 'react';
+import React from 'react';
 import Logo from '../../../../assets/img/logo.svg';
 import {Repository} from '../../../models/repository';
-import CommandPalette from '../CommandPalette';
 import './Sidebar.css';
 import Button from '../Button/Button';
 
@@ -12,18 +11,13 @@ interface Props {
 }
 
 const Sidebar: React.FC<Props> = ({repos, commandPalette, selectedRepo}: Props) => {
-    let [newRepoName, setNewRepoName] = useState("");
-    const handleNewRepoNameChange = (e: ChangeEvent<HTMLInputElement>) => {
-        setNewRepoName(e.target.value);
-    };
-
     return <div className="sidebar">
         <Logo className="logo" />
         {commandPalette}
         <div className="repositories">
             Repositories:
         </div>
-        <ul className="Sidebar">
+        <ul>
             {repos.map((repo) => {
                 if (selectedRepo && repo.name === selectedRepo.name && repo.owner === selectedRepo.owner) {
                     return <li className="selected">{repo.name}</li>
