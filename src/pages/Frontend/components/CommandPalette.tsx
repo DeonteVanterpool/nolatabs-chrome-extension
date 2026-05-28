@@ -4,7 +4,7 @@ import '../Frontend.css';
 interface Command {
     name: string,
     args: DataType[],
-    apply: (arg0: any) => void | Promise<void>,
+    apply: (arg0: any) => (void | Promise<void>),
 }
 
 interface Props {
@@ -79,6 +79,7 @@ const CommandPalette: React.FC<Props> = ({commands, repoNames}: Props) => {
     return <div className="CommandPalette">
         <input value={textInput} autoFocus={true} type="text" className="command-palette" onKeyDown={(e) => {
             if (e.key === "Enter") {
+                console.log(command.slice(1));
                 commands.filter((c) => c.name === command[0]).forEach((v) => v.apply(command.slice(1)));
                 setTextInput("");
             }

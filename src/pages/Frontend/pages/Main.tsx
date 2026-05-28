@@ -5,6 +5,7 @@ import {Repository} from '../../models/repository';
 import {CDMessage, CommitMessage, MkDirMessage, MVMessage, RmMessage} from '../../models/messages';
 import Sidebar from '../components/Sidebar/Sidebar';
 import {useLocation, useNavigate} from 'react-router-dom';
+import CommandPalette from '../components/CommandPalette';
 
 interface Props {}
 
@@ -40,43 +41,48 @@ const Main: React.FC<Props> = () => {
         }
     }, [name, owner]);
 
-    const handleInitRepo = async (repoName: string) => {
-        const repo: Repository = {owner: "me", name: repoName, branches: []};
+    const handleInitRepo = async (args: string[]) => {
+        const repo: Repository = {owner: "me", name: args[0], branches: []};
         await RepositoryStore.create(chrome.storage.local, repo);
-        await handleCommitToRepo(repo);
-        await handleOpenRepo(repo);
+        await fetchRepos();
+        await handleCommitToRepo(args);
+        await handleOpenRepo(args);
     };
 
-    const handleMkRepo = async (repoName: string) => {
-        const repo: Repository = {owner: "me", name: repoName, branches: []};
+    const handleMkRepo = async (args: string[]) => {
+        let repoName = args[0];
         await chrome.runtime.sendMessage(MkDirMessage.new(repoName));
-        await handleOpenRepo(repo);
+        await handleOpenRepo(args);
     };
 
-    const handleRmRepo = async (repo: Repository) => {
+    const handleRmRepo = async (args: string[]) => {
+        let repo = repos.find((r) => r.name === args[0])!;
         await chrome.runtime.sendMessage(RmMessage.new(repo));
         await fetchRepos();
 
         if (name === repo.name && owner === repo.owner) {
-            await navigate("");
+            navigate("");
         }
     };
 
-    const handleOpenRepo = async (repo: Repository) => {
+    const handleOpenRepo = async (args: string[]) => {
+        let repo = repos.find((r) => r.name === args[0])!;
         await chrome.runtime.sendMessage(CDMessage.new(repo));
 
-        await navigate(`?repo-name=${encodeURIComponent(repo.name)}&repo-owner=${encodeURIComponent(repo.owner)}`);
-        return repo;
+        navigate(`?repo-name=${encodeURIComponent(repo.name)}&repo-owner=${encodeURIComponent(repo.owner)}`);
     };
 
-    const handleMvRepo = async (repo: Repository, newName: string) => {
+    const handleMvRepo = async (args: string[]) => {
+        let repo = repos.find((r) => r.name === args[0])!;
+        let newName = args[1];
         await chrome.runtime.sendMessage(MVMessage.new(repo, newName));
         await fetchRepos();
 
         await navigate(`?repo-name=${encodeURIComponent(newName)}&repo-owner=${encodeURIComponent(repo.owner)}`);
     };
 
-    const handleCommitToRepo = async (repo: Repository) => {
+    const handleCommitToRepo = async (args: string[]) => {
+        let repo = repos.find((r) => r.name === args[0])!;
         await chrome.runtime.sendMessage(CommitMessage.new("just committed", repo));
     };
 
@@ -88,7 +94,7 @@ const Main: React.FC<Props> = () => {
         }
     };
 
-    let commands = [
+    let pallete = <CommandPalette commands={[
         {
             name: "commit",
             args: ["String"],
@@ -114,19 +120,13 @@ const Main: React.FC<Props> = () => {
             args: ["String"],
             apply: handleMkRepo,
         }
-    ];
+    ]} repoNames={repos.map((r) => r.name)} />
 
     return (
         <div className="Main">
             <Sidebar
                 repos={repos}
-                handleNewRepo={handleInitRepo}
-                handleOpenRepo={handleOpenRepo}
-                handleCommit={handleCommit}
-                handleMvRepo={handleMvRepo}
-                handleMkRepo={handleMkRepo}
-                handleInitRepo={handleInitRepo}
-                handleRmRepo={handleRmRepo}
+                commandPalette={pallete}
                 selectedRepo={selectedRepo}
             />
             <div className="content">
