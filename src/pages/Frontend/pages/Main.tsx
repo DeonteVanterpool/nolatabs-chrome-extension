@@ -1,6 +1,6 @@
 import React, {useEffect, useState} from 'react';
-import '../Frontend.css';
 import {RepositoryStore} from '../../repository/repository';
+import './Main.css'
 import {Repository} from '../../models/repository';
 import {CDMessage, CommitMessage, MkDirMessage, MVMessage, RmMessage} from '../../models/messages';
 import Sidebar from '../components/Sidebar/Sidebar';
@@ -58,14 +58,14 @@ const Main: React.FC<Props> = () => {
         await fetchRepos();
 
         if (name === repo.name && owner === repo.owner) {
-            navigate("");
+            await navigate("");
         }
     };
 
     const handleOpenRepo = async (repo: Repository) => {
         await chrome.runtime.sendMessage(CDMessage.new(repo));
 
-        navigate(`?repo-name=${encodeURIComponent(repo.name)}&repo-owner=${encodeURIComponent(repo.owner)}`);
+        await navigate(`?repo-name=${encodeURIComponent(repo.name)}&repo-owner=${encodeURIComponent(repo.owner)}`);
         return repo;
     };
 
@@ -73,7 +73,7 @@ const Main: React.FC<Props> = () => {
         await chrome.runtime.sendMessage(MVMessage.new(repo, newName));
         await fetchRepos();
 
-        navigate(`?repo-name=${encodeURIComponent(newName)}&repo-owner=${encodeURIComponent(repo.owner)}`);
+        await navigate(`?repo-name=${encodeURIComponent(newName)}&repo-owner=${encodeURIComponent(repo.owner)}`);
     };
 
     const handleCommitToRepo = async (repo: Repository) => {
@@ -87,6 +87,34 @@ const Main: React.FC<Props> = () => {
             console.warn("Cannot commit: No repository selected");
         }
     };
+
+    let commands = [
+        {
+            name: "commit",
+            args: ["String"],
+            apply: handleCommit,
+        },
+        {
+            name: "cd",
+            args: ["RepositoryName"],
+            apply: handleOpenRepo,
+        },
+        {
+            name: "rm",
+            args: ["RepositoryName"],
+            apply: handleRmRepo,
+        },
+        {
+            name: "init",
+            args: ["String"],
+            apply: handleInitRepo,
+        },
+        {
+            name: "mkdir",
+            args: ["String"],
+            apply: handleMkRepo,
+        }
+    ];
 
     return (
         <div className="Main">
@@ -102,7 +130,7 @@ const Main: React.FC<Props> = () => {
                 selectedRepo={selectedRepo}
             />
             <div className="content">
-                {selectedRepo ? selectedRepo.name : "no repo selected"}
+                <h1>{selectedRepo ? selectedRepo.name : "no repo selected"}</h1>
             </div>
         </div>
     );

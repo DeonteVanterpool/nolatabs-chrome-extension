@@ -1,0 +1,5 @@
+h1 {
+    background-color: var(--background) !important;
+    color: var(--foreground) !important;
+    text-decoration: underline;
+}

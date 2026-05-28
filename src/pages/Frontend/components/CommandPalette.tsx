@@ -1,32 +1,32 @@
-import React, {useEffect, useState} from 'react';
+import React, {useState} from 'react';
 import '../Frontend.css';
 
+interface Command {
+    name: string,
+    args: DataType[],
+    apply: (arg0: any) => void | Promise<void>,
+}
+
 interface Props {
-    commandHandler: (command: string[]) => void;
     commands: Command[],
     repoNames: string[],
 }
 
 export type DataType = "String" | "RepositoryName"
 
-export type Command = {
-    name: string,
-    args: DataType[],
-}
-
 function splitIgnoringQuotes(input: string): string[] {
     const result: string[] = [];
     let current = '';
     let insideQuotes = false;
-    
+
     for (let i = 0; i < input.length; i++) {
         const char = input[i];
-        
+
         if (char === '"') {
             insideQuotes = !insideQuotes;
             continue; // Skip the quote itself
         }
-        
+
         if (char === ' ' && !insideQuotes) {
             if (current !== '') {
                 result.push(current);
@@ -34,22 +34,24 @@ function splitIgnoringQuotes(input: string): string[] {
             }
             continue;
         }
-        
+
         current += char;
     }
-    
+
     // Push the last segment if it exists
     if (current !== '') {
         result.push(current);
     }
-    
+
     return result;
 }
 
-const CommandPalette: React.FC<Props> = ({commandHandler, commands, repoNames}: Props) => {
-    let [command, setCommand] = useState<string[]>([]);
+const CommandPalette: React.FC<Props> = ({commands, repoNames}: Props) => {
     let [textInput, setTextInput] = useState<string>("");
-    let [suggestions, setSuggestions] = useState<string[]>([]);
+    let command = (splitIgnoringQuotes(textInput));
+    let args = command.slice(1);
+    let suggestions: string[] = []
+
     const suggest = (dtype: DataType, text: string): string[] => {
         if (dtype === "String") {
             return [];
@@ -59,42 +61,29 @@ const CommandPalette: React.FC<Props> = ({commandHandler, commands, repoNames}: 
             return [];
         }
     }
-    const suggestionHandler = (): string[] => {
-        setCommand(splitIgnoringQuotes(textInput));
-        if (textInput.split(" ").length <= 1 && (textInput.length === 0 || textInput[0] !== " ")) {
-            console.log("bart");
-            setSuggestions(commands.map((c) => c.name).filter((n) => n.startsWith(textInput)));
-            return commands.map((c) => c.name).filter((n) => n.startsWith(textInput));
-        } else {
-            let command = commands.find((o) => o.name === textInput.split(" ")[0]);
-            console.log("hello");
-            if (command) {
-                let input = splitIgnoringQuotes(textInput);
-                setSuggestions(suggest(command.args[input.length - 2], input[input.length - 1]));
-                return suggest(command.args[input.length], input[input.length - 1]);
-            }
-            setSuggestions([]);
-            return []; // invalid command
+
+    if (args.length === 0 && (textInput.length === 0 || !(["\"", " "].includes(textInput[textInput.length - 1])))) { // if no arguments, and first argument not started typing yet
+        suggestions = commands.map((c) => c.name).filter((n) => n.startsWith(textInput.trim()));
+    } else {
+        let currentCommand = commands.filter((c) => c.name === command[0]);
+        if (currentCommand.length > 0) {
+            let text = textInput[textInput.length - 1] === " " ? "" : args[args.length - 1]; // get last argument, or a blank string if the last text was a space
+            let dtype = textInput[textInput.length - 1] === " " ?
+                currentCommand[0].args[args.length] : // if on a space, get the dtype for next token
+                currentCommand[0].args[args.length - 1]; // dtype for current token
+            suggestions = suggest(dtype, text);
         }
     }
 
-      // Update suggestions whenever textInput changes
-    useEffect(() => {
-    }, [textInput, commands, repoNames, suggestions]);
 
     return <div className="CommandPalette">
         <input value={textInput} autoFocus={true} type="text" className="command-palette" onKeyDown={(e) => {
             if (e.key === "Enter") {
-                commandHandler(command);
+                commands.filter((c) => c.name === command[0]).forEach((v) => v.apply(command.slice(1)));
                 setTextInput("");
-                setCommand([]);
-                setSuggestions([]);
-
             }
         }} onChange={(e) => {
-            setTextInput((e.target as HTMLInputElement).value);
-            textInput = (e.target as HTMLInputElement).value; // the input is used in suggestionHandler, so we need to update it manually so it isn't using the old value
-            suggestions = suggestionHandler();
+            setTextInput((e.target as HTMLInputElement).value); // trigger a rerender on state change
         }
         } />
 
