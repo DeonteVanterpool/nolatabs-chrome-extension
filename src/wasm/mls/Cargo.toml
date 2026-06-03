@@ -18,3 +18,4 @@ serde_json = "1.0.145"
 wasm-bindgen-test = "0.3.55"
 tls_codec = "0.4.2"
 tsify = { version = "0.5.6", features = ["js"] }
+zeroize = "1.8.2"

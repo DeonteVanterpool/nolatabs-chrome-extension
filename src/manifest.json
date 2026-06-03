@@ -10,9 +10,14 @@
         "128": "icon-128.png"
     },
     "content_security_policy": {
-        "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self' 'wasm-unsafe-eval'; worker-src 'self' 'wasm-unsafe-eval';"
+        "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self' 'wasm-unsafe-eval'; worker-src 'self' 'wasm-unsafe-eval';",
+        "sandbox": "sandbox allow-scripts; script-src 'self';"
     },
-    "devtools_page": "devtools.html",
+    "sandbox": {
+        "pages": [
+            "offscreen.html"
+        ]
+    },
     "web_accessible_resources": [
         {
             "resources": [
@@ -36,6 +41,7 @@
     "permissions": [
         "storage",
         "tabs",
-        "tabGroups"
+        "tabGroups",
+        "offscreen"
     ]
 }

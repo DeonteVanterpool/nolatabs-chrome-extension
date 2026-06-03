@@ -1,4 +1,6 @@
+use std::sync::Mutex;
 use lazy_static::lazy_static;
+use zeroize::Zeroize;
 use tsify::Tsify;
 use openmls::prelude::tls_codec::Serialize as SerializeOpenMLS;
 use openmls::prelude::*;
@@ -15,6 +17,8 @@ static CIPHERSUITE: openmls::prelude::Ciphersuite =
 // ... and the crypto provider to use.
 lazy_static! {
     static ref PROVIDER: OpenMlsRustCrypto = OpenMlsRustCrypto::default();
+    static ref CREDENTIALS_LOADED: Mutex<bool> = Mutex::new(false);
+    static ref PASSWORD: Mutex<String> = Mutex::new(String::new());
 }
 
 #[wasm_bindgen]
@@ -22,6 +26,22 @@ lazy_static! {
 pub struct Credentials {
     cwk: CredentialWithKey,
     skp: SignatureKeyPair,
+}
+
+#[wasm_bindgen]
+pub fn check_credentials_loaded() -> JsValue {
+    return serde_wasm_bindgen::to_value(&*CREDENTIALS_LOADED.lock().unwrap()).unwrap();
+}
+
+#[wasm_bindgen]
+pub fn load_credentials(password: String) {
+    if let Ok(mut guard) = PASSWORD.lock() {
+        *guard = password;
+    }
+    
+    if let Ok(mut guard) = CREDENTIALS_LOADED.lock() {
+        *guard = true;
+    }
 }
 
 // Get the provider storage as a JS value. DO NOT PERIST OLD VERSIONS OF THE STORAGE. THIS BREAKS
