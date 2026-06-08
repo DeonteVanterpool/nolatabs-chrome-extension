@@ -1,31 +1,45 @@
-// sandbox.ts (Compiled to sandbox.js via your Webpack setup)
-import init, { load_credentials } from '../../wasm/mls/pkg/mls';
+import init, {load_credentials} from 'src/wasm/mls/pkg/mls';
+import wasmUrl from 'src/wasm/mls/pkg/mls_bg.wasm';
+
+// Securely grab the Extension ID passed through the initialization URL
+const urlParams = new URLSearchParams(window.location.search);
+const EXTENSION_ID = urlParams.get('id');
 
 const wasmReady = (async () => {
     try {
-        await init("./mls_bg.wasm");
+        await init(wasmUrl);
     } catch (err) {
         console.error("WASM failed to initialize inside sandbox:", err);
     }
 })();
 
-// Listen for postMessage streams sent down by offscreen.js
+// Listen for postMessage streams sent down by offscreen.ts
 window.addEventListener('message', async (event) => {
+
+    if (!EXTENSION_ID || event.origin !== `chrome-extension://${EXTENSION_ID}`) return;
+
     await wasmReady;
 
     try {
-        // Run your OpenMLS execution inside the memory-isolated heap
-        const encrypted = load_credentials(event.data);
-        
-        // Find the reply port passed down by the parent window
-        const replyPort = event.ports[0];
-        if (replyPort) {
-            replyPort.postMessage({ success: true, data: encrypted });
+        switch (event.data.action) {
+            case "set_provider_state":
+                let success = load_credentials(event.data.state);
+
+                const replyPort = event.ports[0];
+                if (replyPort) {
+                    replyPort.postMessage({success: true, data: success});
+                    replyPort.close()
+                }
+                break;
+            default:
+                throw new Error("invalid action or no action presented")
         }
     } catch (error) {
         const replyPort = event.ports[0];
         if (replyPort) {
-            replyPort.postMessage({ success: false, error: error.message });
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            replyPort.postMessage({ success: false, error: errorMessage });
+            replyPort.close()
         }
     }
 });

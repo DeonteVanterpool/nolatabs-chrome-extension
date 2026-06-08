@@ -11,7 +11,9 @@ var ReactRefreshTypeScript = require('react-refresh-typescript').default;
 
 const ASSET_PATH = process.env.ASSET_PATH || '/';
 
-var alias = {};
+var alias = {
+    'src': path.resolve(__dirname, 'src'),
+};
 
 // load the secrets
 var secretsPath = path.join(__dirname, 'secrets.' + env.NODE_ENV + '.js');
@@ -38,13 +40,11 @@ const isDevelopment = process.env.NODE_ENV !== 'production';
 var options = {
     mode: process.env.NODE_ENV || 'development',
     entry: {
-        options: path.join(__dirname, 'src', 'pages', 'Options', 'index.jsx'),
-        popup: path.join(__dirname, 'src', 'pages', 'Popup', 'index.jsx'),
-        background: path.join(__dirname, 'src', 'pages', 'Background', 'index.ts'),
-        contentScript: path.join(__dirname, 'src', 'pages', 'Content', 'index.ts'),
-        devtools: path.join(__dirname, 'src', 'pages', 'Devtools', 'index.js'),
-        frontend: path.join(__dirname, 'src', 'pages', 'Frontend', 'index.tsx'),
-        panel: path.join(__dirname, 'src', 'pages', 'Panel', 'index.jsx'),
+        options: path.join(__dirname, 'src', 'entries', 'options', 'index.jsx'),
+        background: path.join(__dirname, 'src', 'entries', 'background', 'index.ts'),
+        frontend: path.join(__dirname, 'src', 'entries', 'frontend', 'index.tsx'),
+        offscreen: path.join(__dirname, 'src', 'entries', 'offscreen', 'offscreen.ts'),
+        sandbox: path.join(__dirname, 'src', 'entries', 'sandbox', 'sandbox.ts')
     },
     chromeExtensionBoilerplate: {
         notHotReload: ['background', 'contentScript', 'devtools'],
@@ -136,14 +136,10 @@ var options = {
             },
             {
                 test: /\.wasm$/,
-                // Tells WebPack that this module should be included as
-                // base64-encoded binary file and not as code
-                loader: 'base64-loader',
-                // Disables WebPack's opinion where WebAssembly should be,
-                // makes it think that it's not WebAssembly
-                //
-                // Error: WebAssembly module is included in initial chunk.
-                type: 'javascript/auto',
+                type: 'asset/resource',
+                generator: {
+                    filename: '[name][ext]' // This outputs "mls_bg.wasm" directly in the /build/ folder
+                }
             },
             {
                 test: /\.svg$/i,
@@ -198,15 +194,6 @@ var options = {
         new CopyWebpackPlugin({
             patterns: [
                 {
-                    from: 'src/pages/Content/content.styles.css',
-                    to: path.join(__dirname, 'build'),
-                    force: true,
-                },
-            ],
-        }),
-        new CopyWebpackPlugin({
-            patterns: [
-                {
                     from: 'src/assets/img/icon-128.png',
                     to: path.join(__dirname, 'build'),
                     force: true,
@@ -241,35 +228,29 @@ var options = {
             ],
         }),
         new HtmlWebpackPlugin({
-            template: path.join(__dirname, 'src', 'pages', 'Options', 'index.html'),
+            template: path.join(__dirname, 'src', 'entries', 'options', 'index.html'),
             filename: 'options.html',
             chunks: ['options'],
             cache: false,
         }),
         new HtmlWebpackPlugin({
-            template: path.join(__dirname, 'src', 'pages', 'Popup', 'index.html'),
-            filename: 'popup.html',
-            chunks: ['popup'],
-            cache: false,
-        }),
-        new HtmlWebpackPlugin({
-            template: path.join(__dirname, 'src', 'pages', 'Devtools', 'index.html'),
-            filename: 'devtools.html',
-            chunks: ['devtools'],
-            cache: false,
-        }),
-        new HtmlWebpackPlugin({
-            template: path.join(__dirname, 'src', 'pages', 'Panel', 'index.html'),
-            filename: 'panel.html',
-            chunks: ['panel'],
-            cache: false,
-        }),
-        new HtmlWebpackPlugin({
-            template: path.join(__dirname, 'src', 'pages', 'Frontend', 'index.html'),
+            template: path.join(__dirname, 'src', 'entries', 'frontend', 'index.html'),
             filename: 'frontend.html',
             chunks: ['frontend'],
             cache: false,
         }),
+        new HtmlWebpackPlugin({
+            template: path.join(__dirname, 'src', 'entries', 'offscreen', 'offscreen.html'),
+            filename: 'offscreen.html',
+            chunks: ['offscreen'],
+            cache: false,
+        }),
+        new HtmlWebpackPlugin({
+            template: path.join(__dirname, 'src', 'entries', 'sandbox', 'sandbox.html'),
+            filename: 'sandbox.html',
+            chunks: ['sandbox'],
+            cache: false,
+        })
     ].filter(Boolean),
     infrastructureLogging: {
         level: 'info',
