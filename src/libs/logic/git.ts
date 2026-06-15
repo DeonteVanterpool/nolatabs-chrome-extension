@@ -1,32 +1,50 @@
-import {Addition, Commit, CommitDiff, Deletion, Delta} from "../models/commit";
-import {Tab} from "../models/tab";
+import {Addition, Commit, CommitDiff, Deletion, Delta} from "src/models/commit";
+import {Branch, Repository} from "src/models/repository";
+import {Tab} from "src/models/tab";
 
-export function createCommit(hash: string, author: string, timestamp: Date, message: string, tabs: Tab[], parents: string[], commits: Commit[]): {commit: Commit, allCommits: Commit[]} {
-    let graph = new Map();
+type SnapshotReader = (commitHash: string) => Tab[];
+type CommitGraph = (commitHash: string) => Commit;
+
+export function defaultCommitGraph(commits: Commit[]): CommitGraph {
+    let graph: Map<string, Commit> = new Map();
     commits.forEach((c) => graph.set(c.hash, c));
-    let difference: CommitDiff;
-    if (parents.length === 1) { // normal commit
-        let parentCommit = graph.get(parents[0]);
-        if (!parentCommit) {
-            throw new Error(`Parent commit ${graph.get(parents[0])?.message} not found`);
+    return (commitHash: string) => {
+        let commit = graph.get(commitHash);
+        if (!commit) {
+            throw new Error(`Commit ${commitHash} not found`);
         }
-        let parentSnapshot = getSnapshot(graph, parentCommit.hash);
-        difference = diff(parentSnapshot, tabs);
-    } else if (parents.length === 0) { // initial commit
-        difference = {additions: tabs.map((tab, _) => {return {tab: tab, after: -1}}), deletions: []}; // add all tabs, since there is no parent
-    } else { // merge commit
-        difference = {additions: [], deletions: []}; // NO evil merges!
+        return commit;
     }
+}
+
+export function createCommit(hash: string, author: string, timestamp: Date, message: string, difference: CommitDiff, parents: string[]): Commit {
 
     let commit = {hash, author, timestamp, message, diff: difference, parents};
 
-    return {commit: commit, allCommits: [...commits, commit]};
+    return commit;
 }
 
-export function buildSnapshot(commits: Commit[], head: string): Tab[] {
-    let graph: Map<string, Commit> = new Map();
-    commits.forEach((c) => graph.set(c.hash, c));
-    return getSnapshot(graph, head);
+export function calculateDifference(
+    parents: string[], 
+    currentTabs: Tab[], 
+    getSnapshot: SnapshotReader
+): CommitDiff {
+    if (parents.length === 1) { // normal commit
+        try {
+            const parentSnapshot = getSnapshot(parents[0]);
+            return diff(parentSnapshot, currentTabs);
+        } catch (e) {
+            throw new Error(`Failed to calculate diff: Parent commit ${parents[0]} not found`);
+        }
+    } else if (parents.length === 0) { // initial commit
+        return { additions: currentTabs.map((tab) => ({ tab, after: -1 })), deletions: [] };
+    } else { // merge commit
+        return { additions: [], deletions: [] }; // no evil merges! (i.e. we won't calculate a diff for merge commits, since they don't represent any new changes to the tabs themselves, just a merging of branches)
+    }
+}
+
+export function buildSnapshot(commitReader: CommitGraph, head: string): Tab[] {
+    return getSnapshot(commitReader, head);
 }
 
 export class CommitHashInput {
@@ -67,15 +85,15 @@ export class CommitHashInput {
 }
 
 
-function getSnapshot(graph: Map<string, Commit>, head: string): Tab[] {
-    let c = graph.get(head);
+function getSnapshot(graph: CommitGraph, head: string): Tab[] {
+    let c = graph(head);
     if (!c) {
         throw new Error(`Commit ${head} not found`);
     }
     if (c.parents.length === 0) {
         return apply([], c.diff);
     } else if (c.parents.length === 1) {
-        let parentCommit = graph.get(c.parents[0]);
+        let parentCommit = graph(c.parents[0]);
         if (parentCommit) {
             let parentSnapshot = getSnapshot(graph, c.parents[0]);
             return apply(parentSnapshot, c.diff);
@@ -90,7 +108,7 @@ function getSnapshot(graph: Map<string, Commit>, head: string): Tab[] {
     }
 }
 
-function getCommonAncestor(graph: Map<string, Commit>, commits: string[]): string | undefined {
+function getCommonAncestor(graph: CommitGraph, commits: string[]): string | undefined {
     if (commits.length === 1) {
         return commits[0];
     }
@@ -102,8 +120,8 @@ function getCommonAncestor(graph: Map<string, Commit>, commits: string[]): strin
     let q2: string[] = [commits[1]];
     // bfs
     while (q1.length !== 0 && q2.length !== 0) {
-        let c1 = graph.get(q1.shift() as string)!;
-        let c2 = graph.get(q2.shift() as string)!;
+        let c1 = graph(q1.shift() as string)!;
+        let c2 = graph(q2.shift() as string)!;
 
         for (const p of c1.parents) {
             if (v2.has(p)) {
@@ -138,7 +156,7 @@ function getCommonAncestor(graph: Map<string, Commit>, commits: string[]): strin
         throw new Error("both q1 and q2 still have elements");
     }
     while (q.length !== 0) {
-        let c = graph.get(q.shift() as string) as Commit;
+        let c = graph(q.shift() as string) as Commit;
 
         for (const p of c.parents) {
             if (v.has(p)) {
@@ -157,7 +175,7 @@ function getCommonAncestor(graph: Map<string, Commit>, commits: string[]): strin
  * This is done by finding the common ancestor of all parents and calculating
  * the diff from that ancestor to each parent, then combining those diffs.
  */
-function aggregateDiffs(graph: Map<string, Commit>, parents: string[]): CommitDiff {
+function aggregateDiffs(graph: CommitGraph, parents: string[]): CommitDiff {
     let additions: Addition[] = [];
     let deletions: Deletion[] = [];
     let commonAncestorHash = getCommonAncestor(graph, parents)!;
@@ -277,3 +295,35 @@ function shortest_edit(a: Tab[], b: Tab[]): Delta[] {
     return [];
 }
 
+export function getRepositoryByNameAndOwner(repos: Repository[], name: string, owner: string): Repository {
+    let repo = repos.find((r) => r.name === name && r.ownerId === owner);
+    if (!repo) {
+        throw new Error(`Repository ${owner}/${name} not found`);
+    }
+    return repo;
+}
+
+export function renameRepository(repo: Repository, newName: string): Repository {
+    return {
+        ...repo,
+        name: newName,
+    }
+}
+
+export function createRepository(id: string, name: string, ownerId: string): Repository {
+    return {
+        id,
+        name,
+        ownerId,
+
+    } satisfies Repository;
+}
+
+export function createBranch(id: string, name: string, repoId: string): Branch {
+    return {
+        id,
+        name,
+        repoId,
+        tipHash: null,
+    } satisfies Branch;
+}

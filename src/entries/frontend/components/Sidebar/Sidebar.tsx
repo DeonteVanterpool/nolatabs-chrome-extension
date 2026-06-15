@@ -19,7 +19,7 @@ const Sidebar: React.FC<Props> = ({repos, commandPalette, selectedRepo}: Props) 
         </div>
         <ul>
             {repos.map((repo) => {
-                if (selectedRepo && repo.name === selectedRepo.name && repo.owner === selectedRepo.owner) {
+                if (selectedRepo && repo.name === selectedRepo.name && repo.ownerId === selectedRepo.ownerId) {
                     return <li className="selected">{repo.name}</li>
                 }
                 return <li>{repo.name}</li>;

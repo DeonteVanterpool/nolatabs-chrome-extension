@@ -2,12 +2,13 @@ export type Repository = {
     // this uuid needs to be generated
     readonly id: string;
     readonly name: string;
-    readonly owner: string;
-    readonly branches: Branch[];
+    readonly ownerId: string;
 }
 
 export type Branch = {
+    readonly id: string;
     readonly name: string;
-    readonly commit: string; // hash of the commit the branch is pointing to
+    readonly repoId: string; // id of the repo the branch belongs to
+    readonly tipHash: string | null; // hash of the commit the branch is pointing to
 }
 

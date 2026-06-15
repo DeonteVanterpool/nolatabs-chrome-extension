@@ -6,29 +6,25 @@
 
 1. Check if your [Node.js](https://nodejs.org/) version is >= **18**.
 2. Clone this repository.
-3. Change the package's `name`, `description`, and `repository` fields in `package.json`.
-4. Change the name of your extension on `src/manifest.json`.
-5. Run `npm install` to install the dependencies.
-6. Run `npm start`
-7. Load your extension on Chrome following:
-   1. Access `chrome://extensions/`
-   2. Check `Developer mode`
-   3. Click on `Load unpacked extension`
-   4. Select the `build` folder.
-8. Happy hacking.
+3. Run `npm install` to install the dependencies.
 
 ## Usage
-The extension will open a new tab when you click on install. First, sign up by entering a username and password. These are necessary to ensure your data is encrypted correctly. Afterwards, you should be able to login using your password.
+The extension will open a new tab when you click on install. 
+1. First, sign up by entering password. Although free users don't have data sent to the cloud (unless working on someone else's cloud repo), a password is still needed to encrypt sensitive data (tab urls) on your hard drive properly. 
+2. Choose whether you want unix / terminal style syncing, or if you want the UI to be written in Plain English. 
+3. You should be able to login using your password.
 
-You can then use the command pallete on the right to manage repositories. Supported commands are listed below:
-
-### commit
-Creates a new commit / localsave on your computer.
-aliases: localsave (main)
+You can then use the command pallete sidebar the left sidebar to manage repositories. Supported commands are listed below:
 
 ### cd
+Enter a directory where you have your tabs
+aliases: enter (main)
+
+### edit
 Clear tabs and change to a different repository
 aliases: open (main)
+
+### commit
 
 ### init
 Creates a new repository from the current window's tabs

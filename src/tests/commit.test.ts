@@ -101,6 +101,30 @@ test('multiple deletions + insertion: catches off-by-diagonal/add-after bugs', (
     expect(applied.map(t => t.url)).toEqual(b.map(t => t.url));
 });
 
+test('CRASH TEST: False-match corruption bug', () => {
+    const a: Tab[] = [
+        {url: 'match_early'},
+        {url: 'target'},
+        {url: 'extra'}
+    ] as Tab[];
+
+    const b: Tab[] = [
+        {url: 'match_early'}, 
+        {url: 'target'}, 
+        {url: 'inserted_tab'}, 
+        {url: 'extra'}
+    ] as Tab[];
+
+    const diff = CommitDiff.diff(a, b);
+    
+    // In your original code, 'inserted_tab' will mistakenly get an 'after' index of 0 
+    // instead of 1, because the global last_match was overwritten.
+    // This cause the apply function to output the wrong order or crash entirely.
+    const applied = diff.apply(a);
+
+    expect(applied.map(t => t.url)).toEqual(b.map(t => t.url));
+});
+
 // Force inner loop to see k = -1 (max = 1)
 test('inserting into empty original (forces k negative)', () => {
     const a: Tab[] = [];

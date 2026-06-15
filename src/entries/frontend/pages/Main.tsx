@@ -19,7 +19,7 @@ const Main: React.FC<Props> = () => {
     const owner = searchParams.get("repo-owner");
     const name = searchParams.get("repo-name");
 
-    const selectedRepo: Repository | undefined = name && owner ? {owner, name, branches: []} : undefined;
+    const selectedRepo: Repository | undefined = name && owner ? {ownerId: owner, name, branches: []} : undefined;
 
     async function fetchRepos() {
         if (!(await RepositoryStore.initialized(chrome.storage.local))) {
@@ -36,13 +36,13 @@ const Main: React.FC<Props> = () => {
     }, []);
 
     useEffect(() => {
-        if (selectedRepo && (owner !== selectedRepo.owner || name !== selectedRepo.name)) {
+        if (selectedRepo && (owner !== selectedRepo.ownerId || name !== selectedRepo.name)) {
             chrome.runtime.sendMessage({action: "cd", args: selectedRepo} as CommandPaletteMessage);
         }
     }, [name, owner]);
 
     const handleInitRepo = async (args: string[]) => {
-        const repo: Repository = {owner: "me", name: args[0], branches: []};
+        const repo: Repository = {ownerId: "me", name: args[0], branches: []};
         await RepositoryStore.create(chrome.storage.local, repo);
         await fetchRepos();
         await handleCommitToRepo(args);
@@ -60,7 +60,7 @@ const Main: React.FC<Props> = () => {
         await chrome.runtime.sendMessage(RmMessage.new(repo));
         await fetchRepos();
 
-        if (name === repo.name && owner === repo.owner) {
+        if (name === repo.name && owner === repo.ownerId) {
             navigate("");
         }
     };
@@ -69,7 +69,7 @@ const Main: React.FC<Props> = () => {
         let repo = repos.find((r) => r.name === args[0])!;
         await chrome.runtime.sendMessage(CDMessage.new(repo));
 
-        navigate(`?repo-name=${encodeURIComponent(repo.name)}&repo-owner=${encodeURIComponent(repo.owner)}`);
+        navigate(`?repo-name=${encodeURIComponent(repo.name)}&repo-owner=${encodeURIComponent(repo.ownerId)}`);
     };
 
     const handleMvRepo = async (args: string[]) => {
@@ -78,7 +78,7 @@ const Main: React.FC<Props> = () => {
         await chrome.runtime.sendMessage(MvMessage.new(repo, newName));
         await fetchRepos();
 
-        await navigate(`?repo-name=${encodeURIComponent(newName)}&repo-owner=${encodeURIComponent(repo.owner)}`);
+        await navigate(`?repo-name=${encodeURIComponent(newName)}&repo-owner=${encodeURIComponent(repo.ownerId)}`);
     };
 
     const handleCommitToRepo = async (args: string[]) => {
