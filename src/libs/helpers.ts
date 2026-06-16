@@ -4,11 +4,11 @@ import * as browserWindow from "src/libs/handlers/browserWindow";
 import {err, ok} from "true-myth/result";
 
 export async function getCurrentlyFocusedRepoId(): Promise<Result<string, string>> {
-    let currentWindow = browserWindow.getCurrentlyFocusedWindowId();
-    if (!currentWindow) {
+    let currentWindow = await browserWindow.getCurrentlyFocusedWindow();
+    if (!currentWindow.id) {
         return err("No window is currently focused.");
     }
-    const windowState = await state.db.windowState.get(currentWindow);
+    const windowState = await state.fetchStateForWindow(currentWindow.id);
     if (!windowState) {
         return err("Window state not found in storage.");
     }
