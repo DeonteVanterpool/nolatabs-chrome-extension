@@ -3,7 +3,7 @@ import { initializeApp } from "firebase/app";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, User } from "firebase/auth";
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
-import Result, * as result from "true-myth/result";
+import Result from "true-myth/result";
 import { ok, err } from "true-myth/result";
 import {firebaseError} from "src/libs/logic/auth";
 

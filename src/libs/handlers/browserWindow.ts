@@ -9,6 +9,7 @@ export async function clearUnpinnedTabs(windowId: number): Promise<void> {
     }
 }
 
+// TODO: create tabs / sync between tab states based on diffs/delta changes for more efficiency
 /** Creates new tabs with the given urls. The tabs will be created in the current window and will be inactive. */
 export async function createTabs(windowId: number, urls: string[]): Promise<void> {
     for (const url of urls) {
@@ -48,3 +49,4 @@ export async function addAllTabsToGroup(windowId: number, title: string): Promis
 export async function getCurrentlyFocusedWindow(): Promise<chrome.windows.Window> {
     return await chrome.windows.getCurrent();
 }
+

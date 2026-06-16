@@ -24,7 +24,7 @@ interface UserSettings {
 interface Repo {
     id: string,
     name: string,
-    owner: string,
+    ownerId: string,
 }
 
 interface Branch {
@@ -84,7 +84,7 @@ export default class LocalDB extends Dexie {
         this.version(1).stores({
             userInfo: '',
             userSettings: '',
-            repos: '&id, &name, owner',
+            repos: '&id, &name, ownerId',
             branches: 'id, name, repoId',
             commits: '&hash, repoId, author, timestamp, message',
             commitsParents: '[commitId+parentId]',
@@ -98,13 +98,13 @@ export default class LocalDB extends Dexie {
 const db = new LocalDB()
 
 // repos ON DELETE, CASCADE to commits
-db.repos.hook("deleting", function (repoId, obj, transaction) {
+db.repos.hook("deleting", function (repoId, _obj, transaction) {
     transaction.table("commits").where("repoId").equals(repoId).delete();
     transaction.table("branches").where("repoId").equals(repoId).delete();
 });
 
 // commits ON DELETE, CASCADE to commitsParents
-db.commits.hook("deleting", function (commitId, obj, transaction) {
+db.commits.hook("deleting", function (commitId, _obj, transaction) {
     transaction.table("commitsParents").where("commitId").equals(commitId).or("parentId").equals(commitId).delete();
     transaction.table("additions").where("commitId").equals(commitId).delete();
     transaction.table("deletions").where("commitId").equals(commitId).delete();
@@ -204,8 +204,7 @@ export const fetchRepositories = async (): Promise<Repository[]> => {
         return repos.map(r => ({
             id: r.id,
             name: r.name,
-            owner: r.owner,
-            branches: branchesByRepoId.get(r.id) || [],
+            ownerId: r.ownerId,
         }));
     });
 }
