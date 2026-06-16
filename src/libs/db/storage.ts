@@ -222,7 +222,7 @@ export const fetchRepositoryIdByName = async (name: string): Promise<Result<stri
 
 
 export const deleteRepository = async (repoId: string): Promise<Result<Unit, string>> => {
-    // these handle cascading deletes
+    // these are to handle cascading deletes
     const affectedTables = [
         db.repos,
         db.commits,
