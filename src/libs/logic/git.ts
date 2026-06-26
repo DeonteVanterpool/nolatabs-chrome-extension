@@ -1,6 +1,4 @@
-import {Addition, Commit, CommitDiff, Deletion, Delta} from "src/models/commit";
-import {Branch, Repository} from "src/models/repository";
-import {Tab} from "src/models/tab";
+import {Addition, Commit, Diff, Deletion, Delta, Branch, Tab, Repository} from "src/models/git";
 
 type SnapshotReader = (commitHash: string) => Tab[];
 type CommitGraph = (commitHash: string) => Commit;
@@ -17,7 +15,7 @@ export function defaultCommitGraph(commits: Commit[]): CommitGraph {
     }
 }
 
-export function createCommit(hash: string, author: string, timestamp: Date, message: string, difference: CommitDiff, parents: string[]): Commit {
+export function createCommit(hash: string, author: string, timestamp: Date, message: string, difference: Diff, parents: string[]): Commit {
 
     let commit = {hash, author, timestamp, message, diff: difference, parents};
 
@@ -28,7 +26,7 @@ export function calculateDifference(
     parents: string[], 
     currentTabs: Tab[], 
     getSnapshot: SnapshotReader
-): CommitDiff {
+): Diff {
     if (parents.length === 1) { // normal commit
         try {
             const parentSnapshot = getSnapshot(parents[0]);
@@ -171,11 +169,11 @@ function getCommonAncestor(graph: CommitGraph, commits: string[]): string | unde
 }
 
 /** 
- * Aggregates changes from multiple parent commits into a single CommitDiff.
+ * Aggregates changes from multiple parent commits into a single Diff.
  * This is done by finding the common ancestor of all parents and calculating
  * the diff from that ancestor to each parent, then combining those diffs.
  */
-function aggregateDiffs(graph: CommitGraph, parents: string[]): CommitDiff {
+function aggregateDiffs(graph: CommitGraph, parents: string[]): Diff {
     let additions: Addition[] = [];
     let deletions: Deletion[] = [];
     let commonAncestorHash = getCommonAncestor(graph, parents)!;
@@ -191,7 +189,7 @@ function aggregateDiffs(graph: CommitGraph, parents: string[]): CommitDiff {
     return {additions, deletions};
 }
 
-function apply(to: Tab[], diff: CommitDiff): Tab[] {
+export function apply(to: Tab[], diff: Diff): Tab[] {
     let tabs: Tab[] = [];
 
     let ptr1 = 0; // ptr to additions array
@@ -225,7 +223,7 @@ function apply(to: Tab[], diff: CommitDiff): Tab[] {
     return tabs;
 }
 
-function diff(a: Tab[], b: Tab[]): CommitDiff {
+export function diff(a: Tab[], b: Tab[]): Diff {
     // here, we will use the Myer's diff algorithm to compare the current state of tabs with the previous state
     // algorithm based on https://blog.jcoglan.com/2017/02/15/the-myers-diff-algorithm-part-1/
 

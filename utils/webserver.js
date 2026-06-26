@@ -9,7 +9,18 @@ var WebpackDevServer = require('webpack-dev-server'),
   env = require('./env'),
   path = require('path');
 
+// 1. DYNAMIC TARGET BROWSER DETECT
+const TARGET_BROWSER = process.env.TARGET_BROWSER || 'chrome';
+
+// Extract the options safely regardless of where they are nested
 var options = config.chromeExtensionBoilerplate || {};
+// Fallback check if you already moved it to LoaderOptionsPlugin in webpack.config
+if (!options.notHotReload && config.plugins) {
+  const loaderPlugin = config.plugins.find(p => p instanceof webpack.LoaderOptionsPlugin);
+  if (loaderPlugin && loaderPlugin.options && loaderPlugin.options.options) {
+    options = loaderPlugin.options.options.chromeExtensionBoilerplate || {};
+  }
+}
 var excludeEntriesToHotReload = options.notHotReload || [];
 
 for (var entryName in config.entry) {
@@ -21,7 +32,10 @@ for (var entryName in config.entry) {
   }
 }
 
-delete config.chromeExtensionBoilerplate;
+// Clean up the object property so Webpack doesn't throw a schema error
+if (config.chromeExtensionBoilerplate) {
+  delete config.chromeExtensionBoilerplate;
+}
 
 var compiler = webpack(config);
 
@@ -37,7 +51,8 @@ var server = new WebpackDevServer(
     host: 'localhost',
     port: env.PORT,
     static: {
-      directory: path.join(__dirname, '../build'),
+      // 2. FIXED: Serve static files from the browser-specific directory
+      directory: path.join(__dirname, `../dist/${TARGET_BROWSER}`),
     },
     devMiddleware: {
       publicPath: `http://localhost:${env.PORT}/`,

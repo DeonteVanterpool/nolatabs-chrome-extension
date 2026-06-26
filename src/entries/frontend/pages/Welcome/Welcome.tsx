@@ -1,9 +1,12 @@
 import React, {useState} from 'react';
 import Button from '../../components/Button/Button';
-import './Welcome.css';
-import LogoIcon from '../../../../assets/img/logo.svg';
-import BackIcon from '../../../../assets/img/back-arrow.svg';
+import LogoIcon from 'src/assets/img/logo.svg';
+import BackIcon from 'src/assets/img/back-arrow.svg';
 import Textbox from '../../components/Textbox/Textbox';
+import {WelcomeMessage} from 'src/models/messages';
+import {argon2Hash} from 'src/libs/handlers/cryptography';
+
+import './Welcome.css';
 
 interface SetupInfo {
     password: string;
@@ -11,13 +14,17 @@ interface SetupInfo {
 }
 
 interface Props {
-    handleRenderLoginPage: () => void;
-    handleSubmit: (info: SetupInfo) => Promise<void>;
 }
 
 type Page = "welcome" | "createpassword" | "commandStyle";
 
-const Welcome: React.FC<Props> = ({handleRenderLoginPage, handleSubmit}) => {
+const Welcome: React.FC<Props> = ({}) => {
+    const handleSubmit = async (info: {password: string; devMode: boolean}) => {
+        const arr = new Uint8Array(16);
+        const salt = crypto.getRandomValues(arr);
+        await chrome.runtime.sendMessage({kind: "welcome", devMode: info.devMode, passwordHash: await argon2Hash(password, salt)} satisfies WelcomeMessage);
+    };
+
     const [currentPage, setCurrentPage] = useState<Page>("welcome");
     const [devMode, setDevMode] = useState<boolean>(false); // Kept strictly as a boolean
     const [password, setPassword] = useState<string>("");

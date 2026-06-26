@@ -5,10 +5,9 @@ import {User} from 'src/models/user';
 
 interface Props {
     handleSignup: (user: User) => void;
-    handleRenderLoginPage: () => void;
 }
 
-const Frontend: React.FC<Props> = ({ handleSignup: onSignUp, handleRenderLoginPage: renderLogin}: Props) => {
+const Frontend: React.FC<Props> = ({ handleSignup: onSignUp}: Props) => {
     const [name, setName] = useState('');
     const [password, setPassword] = useState('');
 
@@ -37,7 +36,6 @@ const Frontend: React.FC<Props> = ({ handleSignup: onSignUp, handleRenderLoginPa
             </label>
             <button type="submit">Sign Up</button>
         </form>
-        Already signed up? <button onClick={renderLogin}>Login</button>
     </div>;
 };
 

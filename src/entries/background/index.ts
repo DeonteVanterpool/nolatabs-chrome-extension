@@ -1,13 +1,8 @@
 import {Message} from "src/models/messages";
-import {Repository} from "src/models/repository";
-import {RepositoryStore} from "src/libs/repository/repository";
-import {CommitService} from "src/libs/services/commit";
-import {RepositoryService} from "src/libs/services/repository";
-import {UserService} from "src/libs/services/user";
 import "./commands";
+import * as unix from "src/libs/handlers/unix";
+import * as user from "src/libs/handlers/user";
 import {openWelcomePage} from "src/libs/handlers/welcome";
-import {BrowserWindow} from "./window";
-import {handleCommit} from "src/libs/handlers/commit";
 
 chrome.runtime.onInstalled.addListener(async () => {
     await openWelcomePage();
@@ -25,79 +20,48 @@ interface CommandRouter {
     [key: string]: (args: string[]) => Promise<any>;
 }
 
-let router = {
-    "loggedIn": async (args: string[]) => {
-        handleCommit(args);
-    },
-    "login": async (args: string[]) => {
-    },
+const commandRouter = {
     "commit": async (args: string[]) => {
+        return await unix.handleCommit(args);
     },
-    "cd": async (args: string[]) => {
+    "edit": async (args: string[]) => {
+        return await unix.handleEdit(args);
     },
-    "mkdir": async (args: string[]) => {
+    "touch": async (args: string[]) => {
+        return await unix.handleTouch(args);
     },
     "rm": async (args: string[]) => {
+        return await unix.handleRm(args);
     },
     "mv": async (args: string[]) => {
+        return await unix.handleMv(args);
     },
-    "welcomed": async (args: string[]) => {
-    },
-    "welcome": async (args: string[]) => {
-    }
 } satisfies CommandRouter;
 
 // command handler
-chrome.runtime.onMessage.addListener((message: Message, _sender, sendResponse): boolean => {
-    const hasResponse = ["loggedIn", "commit", "welcomed"].includes(message.action);
+chrome.runtime.onMessage.addListener((message: Message, sender, sendResponse): boolean => {
+    if (sender.origin !== chrome.runtime.id) {
+        return false;
+    }
     messageQueue.then(async () => {
-        const existingContexts = await chrome.runtime.getContexts({
-            contextTypes: ['OFFSCREEN_DOCUMENT']
-        });
-
-        if (existingContexts.length === 0) {
-            // Create the hidden window
-            await chrome.offscreen.createDocument({
-                url: 'crypto.html',
-                reasons: ['LOCAL_STORAGE'],
-                justification: 'Maintaining secure, persistent cryptographic state.'
-            });
-        }
-        if (message.action === "loggedIn") {
-            let pw = await chrome.storage.session.get("password");
-            sendResponse(!!pw.password);
-        } else if (message.action === "login") {
-            await chrome.storage.session.set({password: options.password});
-        } else if (message.action === "commit") {
-            let tabs = await BrowserWindow.getUnpinnedTabs();
-
-            let commit = await CommitService.commit(chrome.storage.local, options.repo, "me", options.message, tabs, ["main"]);
-
-            sendResponse(commit);
-        } else if (message.action === "cd") {
-            let options = message.args;
-            await RepositoryService.openRepository(chrome.storage.local, options.repo);
-        } else if (message.action === "mkdir") {
-            let options = message.options as MkDirMessageOptions;
-            let repo: Repository = {...options.repo, branches: []}
-
-            await RepositoryStore.create(chrome.storage.local, repo);
-        } else if (message.action === "rm") {
-            let options = message.options as CDMessageOptions;
-
-            RepositoryService.removeRepository(chrome.storage.local, options.repo);
-        } else if (message.action === "mv") {
-            let options = message.options as MvMessageOptions;
-            let newName = options.newName;
-
-            RepositoryService.moveRepository(chrome.storage.local, options.repo, newName);
-        } else if (message.action === "welcomed") {
-            sendResponse(await UserService.welcomed(chrome.storage.local));
-        } else if (message.action === "welcome") {
-            let options = message.options as WelcomeMessageOptions;
-
-            await UserService.welcome(chrome.storage.local, options.password, options.devMode);
+        switch (message.kind) {
+            case "command":
+                if (message.action in commandRouter) {
+                    sendResponse(await commandRouter[message.action as keyof typeof commandRouter](message.args))
+                } else {
+                    throw new Error("unrecognized command: " + message.action); // responses come back untyped, so its better to throw here instead of using Result types
+                }
+                break;
+            case "welcome":
+                throw new Error("unimplemented");
+                // sendResponse(await user.welcome(message.devMode))
+                break
+            case "checkWelcomeStatus":
+                sendResponse(await user.checkWelcomeStatus())
+                break;
+            default:
+                throw new Error("unrecognized message: " + message)
         }
     });
-    return hasResponse; // TODO: uncomment when this can compile
+    return true;
 });

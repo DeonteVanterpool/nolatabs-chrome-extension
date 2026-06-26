@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
-    "target": "es5",
-    "types": ["chrome"],
+    "target": "ES6",
+    "types": ["chrome", "jest"],
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": false,
     "skipLibCheck": true,
@@ -16,11 +16,10 @@
     "resolveJsonModule": true,
     "noEmit": false,
     "jsx": "react",
-    "baseUrl": ".",
     "paths": {
-      "@nolatabs/wasm": ["packages/library/wasm/index.js"]
+      "src/*": ["./src/*"]
     }
   },
-  "include": ["src"],
-  "exclude": ["build", "node_modules"]
+  "include": ["./src"],
+  "exclude": ["./build", "./node_modules"]
 }

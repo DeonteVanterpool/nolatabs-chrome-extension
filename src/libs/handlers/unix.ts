@@ -1,15 +1,15 @@
-import {Commit} from 'src/models/commit';
+import {Commit} from 'src/models/git';
 import * as git from 'src/libs/logic/git';
-import {CommitHashInput} from 'src/libs/logic/commit';
-import {Repository} from 'src/models/repository';
+import {CommitHashInput} from 'src/libs/logic/git';
+import {Repository} from 'src/models/git';
 import * as state from 'src/libs/db/state';
 import * as db from 'src/libs/db/storage';
 import * as helpers from 'src/libs/helpers';
 import {Result, Unit} from 'true-myth';
 import {err, ok} from 'true-myth/result';
-import {createCommit, defaultCommitGraph, calculateDifference, buildSnapshot} from '../logic/commit';
+import {createCommit, defaultCommitGraph, calculateDifference, buildSnapshot} from 'src/libs/logic/git';
 import * as browserWindow from 'src/libs/handlers/browserWindow';
-import {sha2Hash, uuid} from './crypto';
+import {sha2Hash, uuid} from './cryptography';
 
 // match any string
 const stringRegex = /.+/;
@@ -119,6 +119,32 @@ export async function handleRm(args: string[]) {
 
     await state.deleteRepository(repoId.value);
     await db.deleteRepository(repoId.value);
+
+    return ok()
+}
+
+/** command to move/rename a repository
+ * args: [repoName: string] **/
+export async function handleMv(args: string[]) {
+    const currentlyOpenedRepositoryPromise = helpers.getCurrentlyFocusedRepoId();
+    // input validation
+    if (args.length < 2 || args[0].trim() === "") {
+        return err("Not enough arguments provided for rm command. Expected at least 1 arguments: rm <repoName>");
+    }
+
+    // parse arguments
+    const repoName: string = args[0];
+    const newName: string = args[1];
+
+    const [repoId, currentlyOpenedRepository] = await Promise.all([db.fetchRepositoryIdByName(repoName), currentlyOpenedRepositoryPromise]);
+    if (repoId.isErr) {
+        return err(repoId.error);
+    }
+    if (currentlyOpenedRepository.isErr) {
+        return err(currentlyOpenedRepository.error);
+    }
+
+    await db.renameRepository(repoId.value, newName);
 
     return ok()
 }

@@ -1,5 +1,4 @@
 import React, {useEffect, useState} from 'react';
-import {RepositoryStore} from 'src/libs/repository/repository';
 import './Main.css'
 import {Repository} from 'src/models/repository';
 import { CommandPaletteMessage } from 'src/models/messages';
@@ -21,10 +20,8 @@ const Main: React.FC<Props> = () => {
 
     const selectedRepo: Repository | undefined = name && owner ? {ownerId: owner, name, branches: []} : undefined;
 
+    /*
     async function fetchRepos() {
-        if (!(await RepositoryStore.initialized(chrome.storage.local))) {
-            await RepositoryStore.init(chrome.storage.local);
-        }
         const data = await RepositoryStore.read(chrome.storage.local);
         if (data) {
             setRepos(data);
@@ -138,6 +135,8 @@ const Main: React.FC<Props> = () => {
             </div>
         </div>
     );
+    */
+    return <div></div>
 };
 
 export default Main;

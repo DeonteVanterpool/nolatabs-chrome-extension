@@ -1,18 +1,14 @@
 import React, {ChangeEvent, FormEvent, useState} from 'react';
-import {UserService} from 'src/libs/services/user';
-import {User} from 'src/models/user';
-import {AccountMessage} from 'src/models/messages';
 import Button from 'src/entries/frontend/components/Button/Button';
 import Logo from 'src/assets/img/logo.svg';
+import * as cryptography from 'src/libs/handlers/cryptography';
 
 import './Login.css'
 
 interface Props {
-    onLogin: (user: User) => void;
-    renderSignup: () => void;
 }
 
-const Login: React.FC<Props> = ({onLogin, renderSignup}: Props) => {
+const Login: React.FC<Props> = ({onLogin}: Props) => {
     const [password, setPassword] = useState('');
 
     const handlePasswordChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -21,8 +17,8 @@ const Login: React.FC<Props> = ({onLogin, renderSignup}: Props) => {
 
     const handleLogin = async (e: FormEvent) => {
         e.preventDefault();
-        if (await UserService.authenticate(chrome.storage.local, password) === true) {
-            await chrome.runtime.sendMessage({action: "login"} satisfies AccountMessage); // Notify background script of login. Ideally this message should never be intercepted by anything other than the background script, but we should probably add some sort of type field to the message to be safe
+        if (await cryptography.passwordVerify(password)) {
+            // TODO: Authenticate user
             onLogin((await UserService.get(chrome.storage.local))!);
         }
     }

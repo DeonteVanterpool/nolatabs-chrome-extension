@@ -1,118 +1,90 @@
 import React, {useEffect, useState} from 'react';
-import {createHashRouter, RouterProvider, Navigate, Outlet, useNavigate, useLocation} from "react-router-dom";
-import './Frontend.css'; import './theme.css';
-import './theme.css';
-import {User} from '../models/user';
-import {UserService} from 'src/libs/services/user';
+import {createHashRouter, RouterProvider, Navigate, Outlet, useLocation} from "react-router-dom";
+import {handleIsLoggedIn, hookLogin} from "src/libs/handlers/cryptography";
 import Main from './pages/Main';
 import Welcome from './pages/Welcome/Welcome';
 import Login from './pages/Login/Login';
-import Signup from './pages/Signup';
-import {AccountMessage, WelcomeMessage, WelcomeStatusMessage} from 'src/models/messages';
+import {CheckWelcomeStatusMessage} from 'src/models/messages';
+import {hookCreateUser} from 'src/libs/db/storage';
+import './Frontend.css';
+import './theme.css';
 
 interface Props {}
 
-const SignupWrapper: React.FC = () => {
-    const navigate = useNavigate();
-
-    const handleSignup = async (user: User) => {
-        // Force a hard check or pass state if your backend requires it
-        navigate("/", {replace: true});
-    };
-
-    return <Signup handleSignup={handleSignup} handleRenderLoginPage={() => navigate("/login")} />;
-};
-
 const LoginWrapper: React.FC = () => {
-    const navigate = useNavigate();
-    return <Login onLogin={() => {navigate("/"); console.log("nvigating")}} renderSignup={() => navigate("/signup")} />;
+    return <Login />;
 };
 
 const WelcomeWrapper: React.FC = () => {
-    const navigate = useNavigate();
-
-    const handleWelcome = async (info: {password: string; devMode: boolean}) => {
-        await chrome.runtime.sendMessage({action: "welcome", password: info.password, devMode: info.devMode} satisfies WelcomeMessage);
-        navigate("/login");
-    };
-
-    return <Welcome handleSubmit={handleWelcome} handleRenderLoginPage={() => navigate("/login")} />;
+    return <Welcome />;
 };
 
-const AuthGuardian: React.FC = () => {
-    const [isLoading, setIsLoading] = useState(true);
+const AuthGuard: React.FC = () => {
     const [authState, setAuthState] = useState<{
         isWelcomed: boolean;
         isLoggedIn: boolean;
-        hasSavedUser: boolean;
-    }>({isWelcomed: false, isLoggedIn: false, hasSavedUser: false});
+        isLoading: boolean;
+    }>({isWelcomed: false, isLoggedIn: false, isLoading: false});
 
-    const location = useLocation();
-
-    useEffect(() => {
-        const checkAuthStatus = async () => {
-            const storage = chrome.storage.local;
-
-            try {
-                const isWelcomed = await chrome.runtime.sendMessage({action: "checkWelcomeStatus"} satisfies WelcomeStatusMessage);
-                const isLoggedIn = await chrome.runtime.sendMessage({action: "loggedIn"} satisfies AccountMessage);
-                const savedUser = await UserService.get(storage);
-
-                setAuthState({
-                    isWelcomed: !!isWelcomed,
-                    isLoggedIn: !!isLoggedIn,
-                    hasSavedUser: savedUser !== null
-                });
-            } catch (error) {
-                console.error("Failed to initialize auth state:", error);
-            } finally {
-                setIsLoading(false);
-            }
+    // hook to set auth state on mount
+    useEffect(() => { // on mount
+        let counter = 0;
+        const checkLoggedIn = async () => {
+            const loggedIn = await handleIsLoggedIn();
+            setAuthState(prev => ({...prev, isLoggedIn: loggedIn, isLoading: (++counter >= 2)}));
+        };
+        const checkWelcomeStatus = async () => {
+            let welcomeStatus: boolean = await chrome.runtime.sendMessage({kind: "checkWelcomeStatus"} satisfies CheckWelcomeStatusMessage);
+            setAuthState(prev => ({...prev, isWelcomed: welcomeStatus, isLoading: (++counter >= 2)}))
         };
 
-        checkAuthStatus();
-    }, [location.pathname]); // Re-run evaluation whenever the route changes!
+        checkLoggedIn();
+        checkWelcomeStatus();
+    }, []);
 
-    if (isLoading) {
-        return <div className="loading-screen">Loading secure environment...</div>;
+    // hook to set auth state when db state changes
+    useEffect(() => {
+        const unsubscribeLogin = hookLogin(() => setAuthState(prev => ({...prev, isLoggedIn: true})));
+        const updateWelcomed = () => setAuthState(prev => ({...prev, isWelcomed: true}));
+        hookCreateUser.subscribe(updateWelcomed);
+        const cleanup = () => {
+            unsubscribeLogin?.();
+            hookCreateUser.unsubscribe(updateWelcomed);
+        }
+        return () => {
+            cleanup();
+        };
+    }, []);
+
+    const location = useLocation();
+    if (authState.isLoading) {
+        return <div>Loading...</div>
     }
 
-    // Determine the absolute ground-truth destination based on actual status
-    let correctPath = "/signup";
+    let correctPath: string;
     if (!authState.isWelcomed) {
         correctPath = "/welcome";
-    } else if (authState.isLoggedIn) {
-        correctPath = "/";
-    } else if (authState.hasSavedUser) {
+    } else if (!authState.isLoggedIn) {
         correctPath = "/login";
+    } else { // if user is welcomed and signed in
+        correctPath = ["/welcome", "/login"].includes(location.pathname) ? "/" : location.pathname;
     }
 
-    // If the user is at the root "/" but shouldn't be, redirect them
-    if (location.pathname === "/" && !authState.isLoggedIn) {
+    if (location.pathname !== correctPath) {
         return <Navigate to={correctPath} replace />;
     }
 
-    // If they are trying to access auth pages (login/signup) but are already logged in, send them home
-    if (location.pathname !== "/" && authState.isLoggedIn) {
-        return <Navigate to="/" replace />;
-    }
-
-    // Otherwise, render the requested nested route
     return <Outlet />;
 };
 
 const router = createHashRouter([
     {
         path: "/",
-        element: <AuthGuardian />,
+        element: <AuthGuard />,
         children: [
             {
                 index: true,
                 element: <Main />
-            },
-            {
-                path: "signup",
-                element: <SignupWrapper />
             },
             {
                 path: "login",

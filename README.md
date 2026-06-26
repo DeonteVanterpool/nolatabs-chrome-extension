@@ -13,6 +13,7 @@ The extension will open a new tab when you click on install.
 1. First, sign up by entering password. Although free users don't have data sent to the cloud (unless working on someone else's cloud repo), a password is still needed to encrypt sensitive data (tab urls) on your hard drive properly. 
 2. Choose whether you want unix / terminal style syncing, or if you want the UI to be written in Plain English. 
 3. You should be able to login using your password.
+4. Please install the companion app. The companion app is necessary to handle cryptographic operations securely.
 
 You can then use the command pallete sidebar the left sidebar to manage repositories. Supported commands are listed below:
 

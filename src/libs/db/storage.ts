@@ -1,8 +1,7 @@
 import {Dexie, EntityTable} from 'dexie';
-import {CommitDiff} from 'src/models/commit';
 import {CommitMode, User} from 'src/models/user';
-import * as commit from 'src/models/commit';
-import {Repository} from 'src/models/repository';
+import * as git from 'src/models/git';
+import {Repository} from 'src/models/git';
 import Result, {err, ok} from 'true-myth/result';
 import {Unit} from 'true-myth';
 
@@ -10,6 +9,8 @@ interface UserInfo {
     username: string,
     id: string,
     email: string,
+    passwordVerification: string,
+    masterKeySalt: string,
     premium: boolean,
 }
 
@@ -116,10 +117,10 @@ export const readCommits = async (repoId: string) => await db.transaction('r', [
             db.additions.where("commitId").equals(c.hash).toArray(),
             db.deletions.where("commitId").equals(c.hash).toArray(), db.commitsParents.where("commitId").equals(c.hash).toArray()]);
         let diff = ({
-            additions: await Promise.all(additions.map(async (a) => {return {tab: (await db.tabs.get(a.tabId))!, after: a.after} satisfies commit.Addition})),
+            additions: await Promise.all(additions.map(async (a) => {return {tab: (await db.tabs.get(a.tabId))!, after: a.after} satisfies git.Addition})),
             deletions: deletions.map((d) => {return {index: d.index}})
-        }) satisfies (CommitDiff);
-        return ({hash: c.hash, author: c.author, timestamp: new Date(c.timestamp), message: c.message, diff: diff, parents: parents.map(cp => cp.parentId)} satisfies commit.Commit);
+        }) satisfies (git.Diff);
+        return ({hash: c.hash, author: c.author, timestamp: new Date(c.timestamp), message: c.message, diff: diff, parents: parents.map(cp => cp.parentId)} satisfies git.Commit);
     }));
 });
 
@@ -139,7 +140,7 @@ export const readRepoFromCommitHash = async (commitHash: string): Promise<Repo |
     return await db.repos.get(commit.repoId);
 }
 
-export const createCommit = async (repoId: string, commit: commit.Commit) => await db.transaction('rw', [db.commits, db.additions, db.deletions, db.commitsParents, db.tabs], async () => {
+export const createCommit = async (repoId: string, commit: git.Commit) => await db.transaction('rw', [db.commits, db.additions, db.deletions, db.commitsParents, db.tabs], async () => {
     await db.commits.add({hash: commit.hash, repoId: repoId, author: commit.author, timestamp: commit.timestamp.getTime(), message: commit.message});
     await Promise.all(commit.diff.additions.map(async (a) => {
         let tabId = await db.tabs.add(a.tab);
@@ -176,10 +177,17 @@ export const fetchMe = async (): Promise<User> => {
         email: userInfo.email,
         id: userInfo.id,
         premium: userInfo.premium,
+        passwordVerification: userInfo.passwordVerification,
+        masterKeySalt: userInfo.masterKeySalt,
         settings: {
             ...userSettings
         }
     } satisfies User;
+}
+
+export const hasUser = async (): Promise<boolean> => {
+    const userInfo = await db.userInfo.get("global_config");
+    return !!userInfo;
 }
 
 export const createRepository = async (repo: Repository) => {
@@ -238,6 +246,11 @@ export const deleteRepository = async (repoId: string): Promise<Result<Unit, str
     return ok()
 }
 
+export const renameRepository = async (repoId: string, newName: string): Promise<Result<Unit, string>> => {
+    await db.repos.update(repoId, { name: newName });
+    return ok()
+}
+
 export const createUser = async (user: User): Promise<Result<Unit, string>> => {
     if (await db.userInfo.get("global_config")) { // user present already in database
         return err("user already exists")
@@ -253,10 +266,12 @@ export const createUser = async (user: User): Promise<Result<Unit, string>> => {
     return ok()
 }
 
-export const saveCommitAndUpdateBranch = async (repoId: string, commit: commit.Commit, branchId: string) => {
+export const saveCommitAndUpdateBranch = async (repoId: string, commit: git.Commit, branchId: string) => {
     return await db.transaction('rw', [db.commits, db.branches, db.additions, db.deletions, db.commitsParents, db.tabs], async () => {
         await createCommit(repoId, commit);
         await upsertBranch(branchId, repoId, branchId, commit.hash);
     });
 };
+
+export const hookCreateUser = db.userInfo.hook("creating");
 

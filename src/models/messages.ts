@@ -1,20 +1,17 @@
-export type Message = AccountMessage | CommandPaletteMessage | WelcomeMessage;
+export type Message = Command | WelcomeMessage | CheckWelcomeStatusMessage;
 
-export type AccountMessage = {
-    action: "loggedIn" | "login",
-}
-
-export type WelcomeMessage = {
-    action: "welcome",
-    password: string,
-    devMode: boolean,
-}
-
-export type WelcomeStatusMessage = {
-    action: "checkWelcomeStatus",
-}
-
-export type CommandPaletteMessage = {
-    action: "mkdir" | "cd" | "rm" | "mv" | "commit",
+export interface Command {
+    kind: "command",
+    action: string,
     args: string[],
+};
+
+export interface WelcomeMessage {
+    kind: "welcome",
+    devMode: boolean,
+    passwordHash: string,
+};
+
+export interface CheckWelcomeStatusMessage {
+    kind: "checkWelcomeStatus",
 };

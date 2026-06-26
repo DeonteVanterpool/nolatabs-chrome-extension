@@ -35,7 +35,9 @@ if (fileSystem.existsSync(secretsPath)) {
     alias['secrets'] = secretsPath;
 }
 
+const TARGET_BROWSER = process.env.TARGET_BROWSER || 'chrome';
 const isDevelopment = process.env.NODE_ENV !== 'production';
+const buildPath = path.resolve(__dirname, `dist/${TARGET_BROWSER}`);
 
 var options = {
     mode: process.env.NODE_ENV || 'development',
@@ -43,15 +45,10 @@ var options = {
         options: path.join(__dirname, 'src', 'entries', 'options', 'index.jsx'),
         background: path.join(__dirname, 'src', 'entries', 'background', 'index.ts'),
         frontend: path.join(__dirname, 'src', 'entries', 'frontend', 'index.tsx'),
-        offscreen: path.join(__dirname, 'src', 'entries', 'offscreen', 'offscreen.ts'),
-        sandbox: path.join(__dirname, 'src', 'entries', 'sandbox', 'sandbox.ts')
-    },
-    chromeExtensionBoilerplate: {
-        notHotReload: ['background', 'contentScript', 'devtools'],
     },
     output: {
         filename: '[name].bundle.js',
-        path: path.resolve(__dirname, 'build'),
+        path: buildPath,
         clean: true,
         publicPath: ASSET_PATH,
     },
@@ -135,19 +132,11 @@ var options = {
                 exclude: /node_modules/,
             },
             {
-                test: /\.wasm$/,
-                type: 'asset/resource',
-                generator: {
-                    filename: '[name][ext]' // This outputs "mls_bg.wasm" directly in the /build/ folder
-                }
-            },
-            {
                 test: /\.svg$/i,
                 issuer: /\.[jt]sx?$/,
                 use: ['@svgr/webpack'],
             },
         ],
-        noParse: /\.wasm$/,
     },
     resolve: {
         // We're using different node.js modules in our code,
@@ -167,6 +156,13 @@ var options = {
             .concat(['.js', '.jsx', '.ts', '.tsx', '.css']),
     },
     plugins: [
+        new webpack.LoaderOptionsPlugin({
+            options: {
+                chromeExtensionBoilerplate: {
+                    notHotReload: ['background', 'contentScript', 'devtools'],
+                }
+            }
+        }),
         isDevelopment && new ReactRefreshWebpackPlugin(),
         new CleanWebpackPlugin({verbose: false}),
         new webpack.ProgressPlugin(),
@@ -176,7 +172,7 @@ var options = {
             patterns: [
                 {
                     from: 'src/manifest.json',
-                    to: path.join(__dirname, 'build'),
+                    to: buildPath,
                     force: true,
                     transform: function (content, path) {
                         // generates the manifest file using the package.json informations
@@ -195,7 +191,7 @@ var options = {
             patterns: [
                 {
                     from: 'src/assets/img/icon-128.png',
-                    to: path.join(__dirname, 'build'),
+                    to: buildPath,
                     force: true,
                 },
             ],
@@ -204,16 +200,7 @@ var options = {
             patterns: [
                 {
                     from: 'src/assets/img/logo.svg',
-                    to: path.join(__dirname, 'build'),
-                    force: true,
-                },
-            ],
-        }),
-        new CopyWebpackPlugin({
-            patterns: [
-                {
-                    from: 'src/wasm/mls/pkg/mls_bg.wasm',
-                    to: path.join(__dirname, 'build'),
+                    to: buildPath,
                     force: true,
                 },
             ],
@@ -222,7 +209,7 @@ var options = {
             patterns: [
                 {
                     from: 'src/assets/img/icon-34.png',
-                    to: path.join(__dirname, 'build'),
+                    to: buildPath,
                     force: true,
                 },
             ],
@@ -239,18 +226,34 @@ var options = {
             chunks: ['frontend'],
             cache: false,
         }),
-        new HtmlWebpackPlugin({
-            template: path.join(__dirname, 'src', 'entries', 'offscreen', 'offscreen.html'),
-            filename: 'offscreen.html',
-            chunks: ['offscreen'],
-            cache: false,
+        new CopyWebpackPlugin({
+            patterns: [
+                {
+                    from: './src/manifest.json',
+                    to: 'manifest.json',
+                    transform(content) {
+                        // Parse the original manifest
+                        const manifest = JSON.parse(content.toString());
+
+                        if (TARGET_BROWSER === 'firefox') {
+                            // Firefox requires browser_specific_settings for MV3
+                            manifest.browser_specific_settings = {
+                                gecko: {
+                                    id: "deonte@asimslaboratory.com", // Choose a unique ID string
+                                    strict_min_version: "121.0" // Ensures fallback behavior works safely
+                                }
+                            };
+                        }
+
+                        // Return the modified manifest as a buffer
+                        return JSON.stringify(manifest, null, 2);
+                    },
+                },
+                // Copy your HTML/Images if you have them
+                {from: './src/popup.html', to: 'popup.html', noErrorOnMissing: true},
+                {from: './src/icons', to: 'icons', noErrorOnMissing: true},
+            ],
         }),
-        new HtmlWebpackPlugin({
-            template: path.join(__dirname, 'src', 'entries', 'sandbox', 'sandbox.html'),
-            filename: 'sandbox.html',
-            chunks: ['sandbox'],
-            cache: false,
-        })
     ].filter(Boolean),
     infrastructureLogging: {
         level: 'info',

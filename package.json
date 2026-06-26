@@ -9,9 +9,11 @@
   },
   "devContentSecurityPolicy": "script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval'",
   "scripts": {
-    "build": "$npm_execpath run build:wasm && node utils/build.js",
-    "build:wasm": "wasm-pack build src/wasm/mls --target web",
-    "start": "node utils/webserver.js",
+    "build:chrome": "cross-env NODE_ENV=production TARGET_BROWSER=chrome webpack",
+    "build:firefox": "cross-env NODE_ENV=production TARGET_BROWSER=firefox webpack",
+    "build:all": "$npm_execpath run build:chrome && npm run build:firefox",
+    "start:chrome": "cross-env TARGET_BROWSER=chrome node utils/webserver.js",
+    "start:firefox": "cross-env TARGET_BROWSER=firefox node utils/webserver.js",
     "prettier": "prettier --write '**/*.{js,jsx,ts,tsx,json,css,scss,md}'",
     "test": "jest",
     "storybook": "storybook dev -p 6006",
@@ -36,7 +38,6 @@
     "testEnvironment": "node"
   },
   "dependencies": {
-    "argon2-browser": "^1.18.0",
     "base64-loader": "^1.0.0",
     "crypto-browserify": "^3.12.1",
     "dexie": "^4.4.3",
@@ -72,6 +73,7 @@
     "babel-preset-react-app": "^10.0.1",
     "clean-webpack-plugin": "^4.0.0",
     "copy-webpack-plugin": "^11.0.0",
+    "cross-env": "^10.1.0",
     "css-loader": "^6.7.3",
     "eslint": "^8.31.0",
     "eslint-config-react-app": "^7.0.1",

@@ -1,4 +1,4 @@
-import {Tab} from "src/models/tab";
+import {Tab} from "src/models/git";
 
 export async function clearUnpinnedTabs(windowId: number): Promise<void> {
     let tabs = await chrome.tabs.query({windowId, pinned: false});
