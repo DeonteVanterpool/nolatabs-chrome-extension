@@ -20,7 +20,6 @@ const Main: React.FC<Props> = () => {
 
     const selectedRepo: Repository | undefined = name && owner ? {ownerId: owner, name, branches: []} : undefined;
 
-    /*
     async function fetchRepos() {
         const data = await RepositoryStore.read(chrome.storage.local);
         if (data) {
@@ -135,7 +134,6 @@ const Main: React.FC<Props> = () => {
             </div>
         </div>
     );
-    */
     return <div></div>
 };
 

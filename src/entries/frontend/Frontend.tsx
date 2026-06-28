@@ -24,18 +24,25 @@ const AuthGuard: React.FC = () => {
         isWelcomed: boolean;
         isLoggedIn: boolean;
         isLoading: boolean;
-    }>({isWelcomed: false, isLoggedIn: false, isLoading: false});
+    }>({isWelcomed: false, isLoggedIn: false, isLoading: true});
 
     // hook to set auth state on mount
     useEffect(() => { // on mount
         let counter = 0;
         const checkLoggedIn = async () => {
             const loggedIn = await handleIsLoggedIn();
-            setAuthState(prev => ({...prev, isLoggedIn: loggedIn, isLoading: (++counter >= 2)}));
+            setAuthState(prev => {
+                let tmp = ({...prev, isLoggedIn: loggedIn, isLoading: (++counter < 2)})
+                return tmp
+            }
+            );
         };
         const checkWelcomeStatus = async () => {
             let welcomeStatus: boolean = await chrome.runtime.sendMessage({kind: "checkWelcomeStatus"} satisfies CheckWelcomeStatusMessage);
-            setAuthState(prev => ({...prev, isWelcomed: welcomeStatus, isLoading: (++counter >= 2)}))
+            setAuthState(prev => {
+                let tmp = ({...prev, isWelcomed: welcomeStatus, isLoading: (++counter < 2)})
+                return tmp;
+            })
         };
 
         checkLoggedIn();

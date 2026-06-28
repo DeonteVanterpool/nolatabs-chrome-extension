@@ -53,8 +53,7 @@ chrome.runtime.onMessage.addListener((message: Message, sender, sendResponse): b
                 }
                 break;
             case "welcome":
-                throw new Error("unimplemented");
-                // sendResponse(await user.welcome(message.devMode))
+                sendResponse(await user.welcome(message.devMode))
                 break
             case "checkWelcomeStatus":
                 sendResponse(await user.checkWelcomeStatus())
