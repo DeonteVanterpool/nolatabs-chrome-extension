@@ -26,7 +26,8 @@
 secrets.*.js
 
 # wasm
-/src/wasm/mls/target/
+/src/wasm/crypto/target/
 
 *storybook.log
 storybook-static
+

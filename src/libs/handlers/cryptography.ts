@@ -17,12 +17,12 @@ export async function sha2Verify(input: string, hash: string): Promise<boolean> 
     return await sha2Hash(input) === hash;
 }
 
-export async function argon2Hash(text: string, salt: Uint8Array): Promise<string> {
+export async function argon2Hash(text: Uint8Array, salt: Uint8Array): Promise<string> {
     throw Error("Unimplemented!");
     // return (await argon2.hash({pass: text, salt, time: 3, type: argon2.ArgonType.Argon2id})).encoded;
 }
 
-export async function argon2Verify(pass: string, encoded: string): Promise<boolean> {
+export async function argon2Verify(pass: Uint8Array, encoded: string): Promise<boolean> {
     throw Error("Unimplemented!");
     // return await argon2.verify({encoded, pass: pass}).then(() => true).catch(() => false);
 }

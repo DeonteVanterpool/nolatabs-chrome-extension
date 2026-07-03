@@ -4,6 +4,13 @@ import * as unix from "src/libs/handlers/unix";
 import * as user from "src/libs/handlers/user";
 import {openWelcomePage} from "src/libs/handlers/welcome";
 
+// we do this to allow the master key to stay in memory for the duration of the entire session. The alternative would be to store in chrome session storage, which means we have to make copy of the master key whenever we need to use it
+const keepAlive = () => setInterval(chrome.runtime.getPlatformInfo, 20e3);
+chrome.runtime.onStartup.addListener(keepAlive);
+keepAlive();
+
+console.log("Started at ", new Date())
+
 chrome.runtime.onInstalled.addListener(async () => {
     await openWelcomePage();
 });
@@ -64,3 +71,4 @@ chrome.runtime.onMessage.addListener((message: Message, sender, sendResponse): b
     });
     return true;
 });
+
