@@ -17,9 +17,10 @@ static mut AES_CIPHER: Option<Aes256Gcm> = None;
 static PASSWORD_HASHER: Lazy<Argon2<'static>> = Lazy::new(|| Argon2::default());
 
 pub mod mls;
+mod mls_helpers;
 
 /// All decrypted text is sent back as packets. Packets have arbitrary size and can be Box::leaked to have a static lifetime and never drop. The main benefit of sending this Packet tuple is less copies. Copies are bad because sensitive data might lay around in memory, and you have to zeroize them after sending it to Javascript. Extra copies also hurt performance. With packets, we can just hava JS reach directly into WASM linear memory. These packets can be reused for performance critical stuff in the future.
-/// NOTE: If using Box::leak, the onus goes on Javascript, or the caller to free (and zeroize) the memory isn't needed any longer
+/// NOTE: If using Box::leak, the onus goes on Javascript, or the caller to free (and zeroize) the memory when it isn't needed any longer
 #[wasm_bindgen]
 pub struct Packet(pub u32, pub *mut u8);
 

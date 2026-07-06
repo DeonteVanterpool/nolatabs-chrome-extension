@@ -322,6 +322,7 @@ dependencies = [
  "oxicode",
  "serde",
  "serde_json",
+ "thiserror",
  "tls_codec",
  "wasm-bindgen",
  "wasm-bindgen-test",

@@ -1,133 +1,85 @@
-use crypto::mls::{
-    Invitation, ProcessedMessage, create_group, encrypt_message, export_ratchet_tree, generate_credential_with_key, generate_key_package, invite
-};
-use openmls::prelude::KeyPackage;
-use openmls::group::GroupId;
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use wasm_bindgen::prelude::*;
+use crypto::mls::*;
+use crypto::*;
 use wasm_bindgen_test::*;
-use crypto::mls;
 
-// Run in a browser (needed for OpenMLS) -- NEED TO HAVE THE CORRECT BROWSER INSTALLED
+// Run in a browser (needed for OpenMLS random number generation usually)
 wasm_bindgen_test_configure!(run_in_browser);
 
-#[wasm_bindgen]
-#[derive(Deserialize)]
-pub struct Kpg {
-    key_package: KeyPackage,
-}
+const NONCE_ALICE: &[u8] = &[0u8; 12];
+const NONCE_BOB: &[u8] = &[1u8; 12];
 
-impl Kpg {
-    pub fn inner(self) -> KeyPackage {
-        self.key_package
-    }
-}
+#[wasm_bindgen_test]
+fn test_storage_save_and_reload() {
+    set_master_key(vec![1;32]);
+    let identity = b"test_user";
+    
+    // 1. Initialize user
+    let pub_key = init(identity).expect("Failed to init user");
 
-#[wasm_bindgen]
-#[derive(Deserialize)]
-pub struct CredentialWrapper {
-    credentials: mls::Credentials,
-}
+    // 2. Create a group so there is meaningful state to save
+    let group_id = create_group().expect("Failed to create group");
 
-impl CredentialWrapper {
-    pub fn inner(self) -> mls::Credentials {
-        self.credentials
-    }
-}
+    // 3. Export and encrypt the storage
+    let encrypted_storage = get_storage(NONCE_ALICE).expect("Failed to get storage");
 
-#[wasm_bindgen]
-#[derive(Deserialize)]
-pub struct GroupIdWrapper {
-    group_id: GroupId,
-}
+    // 4. Simulate unloading the provider/restarting the app by overriding the global state
+    // with a completely different dummy initialization
+    let _dummy_pub = init(b"dummy_user").expect("Failed to init dummy");
 
-impl GroupIdWrapper {
-    pub fn inner(self) -> GroupId {
-        self.group_id
-    }
-}
+    // 5. Reload the original user's state
+    load_storage(&encrypted_storage, NONCE_ALICE, &pub_key, identity)
+        .expect("Failed to load storage");
 
-#[wasm_bindgen]
-#[derive(Deserialize, Serialize)]
-pub struct InvitationWrapper {
-    invitation: Invitation,
-}
-
-impl InvitationWrapper {
-    pub fn inner(self) -> Invitation {
-        self.invitation
-    }
+    // 6. Verify state was restored by successfully interacting with the previously created group
+    let msg = b"ping";
+    let _encrypted = encrypt_message(&group_id, msg)
+        .expect("Failed to encrypt message after reloading storage; state was lost");
 }
 
 #[wasm_bindgen_test]
-fn send_message() {
-    let msg = "hello";
+fn test_mls_messaging_flow() {
+    set_master_key(vec![1;32]);
+    let alice_identity = b"alice";
+    let bob_identity = b"bob";
 
-    // Setup credentials and key packages for both parties
-    let sender_creds = generate_credential_with_key([0].to_vec());
-    let receiver_creds = generate_credential_with_key([1].to_vec());
-    let receiver_kpg = generate_key_package(receiver_creds.clone()).unwrap();
+    // setup for bob
+    let bob_pub = init(bob_identity).expect("Failed to init Bob");
+    let bob_kpkg = generate_key_package().expect("Failed to generate Bob's key package");
+    
+    // Save Bob's state so we can switch contexts to Alice
+    let bob_storage = get_storage(NONCE_BOB).expect("Failed to save Bob's storage");
 
-    // Make a copy of receiver's provider storage before sender modifies it
-    let receiver_provider_storage: HashMap<Vec<u8>, Vec<u8>> =
-        serde_wasm_bindgen::from_value(mls::get_provider_storage().unwrap()).unwrap();
+    // setup alice
+    let _alice_pub = init(alice_identity).expect("Failed to init Alice");
+    
+    // Alice creates the group
+    let group_id = create_group().expect("Failed to create Alice's group");
 
-    // SENDER SIDE:
-    // Sender creates the group
-    let group = create_group(sender_creds.clone()).unwrap();
-    let group_id: GroupId = serde_wasm_bindgen::from_value(group.clone()).unwrap();
+    // Alice invites Bob
+    let welcome_msg = invite(&bob_kpkg, &group_id).expect("Failed to invite Bob");
+    
+    // Alice exports the ratchet tree for Bob
+    let ratchet_tree = export_ratchet_tree(&group_id).expect("Failed to export ratchet tree");
 
-    // Sender invites receiver to the group
-    let invitation = Invitation::new(
-        serde_wasm_bindgen::from_value(sender_creds.clone()).unwrap(),
-        serde_wasm_bindgen::from_value::<Kpg>(receiver_kpg)
-            .unwrap()
-            .inner(),
-        group_id.clone(),
-    );
+    // Alice encrypts a message for the group
+    let plain_msg = b"Hello Bob!";
+    let encrypted_msg = encrypt_message(&group_id, plain_msg).expect("Failed to encrypt message");
 
-    let invitation_js = serde_wasm_bindgen::to_value(&invitation).unwrap();
-    let welcome_out: Vec<u8> =
-        serde_wasm_bindgen::from_value(invite(invitation_js).unwrap()).unwrap();
-    let tree = export_ratchet_tree(group.clone().into()).unwrap();
+    // Reload Bob's state (simulating Bob opening his app / context switching)
+    load_storage(&bob_storage, NONCE_BOB, &bob_pub, bob_identity)
+        .expect("Failed to load Bob's storage");
 
-    // Sender encrypts a message for the group
-    let encrypt_info = mls::MessageEncryptInfo::new(
-        group_id.clone(),
-        msg.as_bytes().to_vec(),
-        serde_wasm_bindgen::from_value(sender_creds).unwrap(),
-    );
+    // Bob accepts the invitation
+    let bob_group_id = accept_invitation(&welcome_msg, &ratchet_tree)
+        .expect("Failed to accept invitation");
+    
+    assert_eq!(group_id, bob_group_id, "Group IDs should match between sender and receiver");
 
-    let encrypt_info_js = serde_wasm_bindgen::to_value(&encrypt_info).unwrap();
-    let encrypted_message = encrypt_message(encrypt_info_js).unwrap();
-    let encrypted_bytes: Vec<u8> =
-        serde_wasm_bindgen::from_value(encrypted_message.clone()).unwrap();
+    // Bob processes and decrypts the message
+    let processed = process_message(&bob_group_id, &encrypted_msg)
+        .expect("Failed to process message");
+        
+    let decrypted_msg = processed.expect("Expected an application message, got a staged commit");
 
-    // RECEIVER SIDE: 
-    // Accept invitation and decrypt message
-    mls::load_provider_storage(serde_wasm_bindgen::to_value(&receiver_provider_storage).unwrap())
-        .unwrap();
-
-    // Receiver accepts the invitation
-    let accept_invitation =
-        mls::AcceptInvitation::new(serde_wasm_bindgen::from_value(tree).unwrap(), welcome_out);
-
-    let accept_invitation_js = serde_wasm_bindgen::to_value(&accept_invitation).unwrap();
-    let group_after_accept: GroupId =
-        serde_wasm_bindgen::from_value(mls::accept_invitation(accept_invitation_js).unwrap())
-            .unwrap();
-
-    assert_eq!(group_after_accept, group_id);
-
-    // Receiver decrypts the message
-    let message_info = mls::MessageInfo::new(group_after_accept, encrypted_bytes);
-
-    let message_info_js = serde_wasm_bindgen::to_value(&message_info).unwrap();
-    let decrypted_message = mls::process_message(message_info_js).unwrap();
-    let decrypted_message_deserialized: ProcessedMessage = serde_wasm_bindgen::from_value(decrypted_message).unwrap();
-
-    assert_eq!(decrypted_message_deserialized.get_kind(), &String::from("ApplicationMessage"));
-
-    assert_eq!(b"hello", decrypted_message_deserialized.get_content("message").unwrap().as_slice());
+    assert_eq!(decrypted_msg, plain_msg, "Decrypted message must match original payload");
 }
