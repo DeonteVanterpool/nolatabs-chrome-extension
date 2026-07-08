@@ -132,6 +132,17 @@ var options = {
                 exclude: /node_modules/,
             },
             {
+                test: /\.wasm$/,
+                // Tells WebPack that this module should be included as
+                // base64-encoded binary file and not as code
+                loader: 'base64-loader',
+                // Disables WebPack's opinion where WebAssembly should be,
+                // makes it think that it's not WebAssembly
+                //
+                // Error: WebAssembly module is included in initial chunk.
+                type: 'javascript/auto',
+            },
+            {
                 test: /\.svg$/i,
                 issuer: /\.[jt]sx?$/,
                 use: ['@svgr/webpack'],
@@ -184,6 +195,15 @@ var options = {
                             })
                         );
                     },
+                },
+            ],
+        }),
+        new CopyWebpackPlugin({
+            patterns: [
+                {
+                    from: 'src/wasm/crypto/pkg/crypto_bg.wasm',
+                    to: path.join(__dirname, 'build'),
+                    force: true,
                 },
             ],
         }),
