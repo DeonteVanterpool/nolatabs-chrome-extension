@@ -41,6 +41,10 @@ const buildPath = path.resolve(__dirname, `dist/${TARGET_BROWSER}`);
 
 var options = {
     mode: process.env.NODE_ENV || 'development',
+    experiments: {
+        asyncWebAssembly: true,
+        layers: true,
+    },
     entry: {
         options: path.join(__dirname, 'src', 'entries', 'options', 'index.jsx'),
         background: path.join(__dirname, 'src', 'entries', 'background', 'index.ts'),
@@ -133,14 +137,7 @@ var options = {
             },
             {
                 test: /\.wasm$/,
-                // Tells WebPack that this module should be included as
-                // base64-encoded binary file and not as code
-                loader: 'base64-loader',
-                // Disables WebPack's opinion where WebAssembly should be,
-                // makes it think that it's not WebAssembly
-                //
-                // Error: WebAssembly module is included in initial chunk.
-                type: 'javascript/auto',
+                type: 'webassembly/async',
             },
             {
                 test: /\.svg$/i,
@@ -182,27 +179,8 @@ var options = {
         new CopyWebpackPlugin({
             patterns: [
                 {
-                    from: 'src/manifest.json',
-                    to: buildPath,
-                    force: true,
-                    transform: function (content, path) {
-                        // generates the manifest file using the package.json informations
-                        return Buffer.from(
-                            JSON.stringify({
-                                description: process.env.npm_package_description,
-                                version: process.env.npm_package_version,
-                                ...JSON.parse(content.toString()),
-                            })
-                        );
-                    },
-                },
-            ],
-        }),
-        new CopyWebpackPlugin({
-            patterns: [
-                {
                     from: 'src/wasm/crypto/pkg/crypto_bg.wasm',
-                    to: path.join(__dirname, 'build'),
+                    to: 'crypto_bg.wasm',
                     force: true,
                 },
             ],
@@ -211,7 +189,7 @@ var options = {
             patterns: [
                 {
                     from: 'src/assets/img/icon-128.png',
-                    to: buildPath,
+                    to: 'icon-128.png',
                     force: true,
                 },
             ],
@@ -220,7 +198,7 @@ var options = {
             patterns: [
                 {
                     from: 'src/assets/img/logo.svg',
-                    to: buildPath,
+                    to: 'logo.svg',
                     force: true,
                 },
             ],
@@ -229,7 +207,7 @@ var options = {
             patterns: [
                 {
                     from: 'src/assets/img/icon-34.png',
-                    to: buildPath,
+                    to: 'icon-34.png',
                     force: true,
                 },
             ],
@@ -264,6 +242,8 @@ var options = {
                                 }
                             };
                         }
+                        manifest.description = process.env.npm_package_description;
+                        manifest.version = process.env.npm_package_version;
 
                         // Return the modified manifest as a buffer
                         return JSON.stringify(manifest, null, 2);

@@ -19,7 +19,7 @@ static PASSWORD_HASHER: Lazy<Argon2<'static>> = Lazy::new(|| Argon2::default());
 pub mod mls;
 mod mls_helpers;
 
-/// All decrypted text is sent back as packets. Packets have arbitrary size and can be Box::leaked to have a static lifetime and never drop. The main benefit of sending this Packet tuple is less copies. Copies are bad because sensitive data might lay around in memory, and you have to zeroize them after sending it to Javascript. Extra copies also hurt performance. With packets, we can just hava JS reach directly into WASM linear memory. These packets can be reused for performance critical stuff in the future.
+/// All sensitive text is sent back as packets. Packets have arbitrary size and can be Box::leaked to have a static lifetime and never drop. The main benefit of sending this Packet tuple is less copies. Copies are bad because sensitive data might lay around in memory, and you have to zeroize them after sending it to Javascript. Extra copies also hurt performance. With packets, we can just hava JS reach directly into WASM linear memory. These packets can be reused for performance critical stuff in the future.
 /// NOTE: If using Box::leak, the onus goes on Javascript, or the caller to free (and zeroize) the memory when it isn't needed any longer
 #[wasm_bindgen]
 pub struct Packet(pub u32, pub *mut u8);
@@ -38,7 +38,8 @@ pub fn argon2_set_password(mut password: Vec<u8>, salt: Vec<u8>) -> Vec<u8> {
         .hash_password_into(&password, &salt, &mut buf)
         .unwrap();
     let (verification_key, key_encryption_key) = buf.split_at(32);
-    unsafe { // unsafe should actually be safe because JS is single threaded.
+    unsafe {
+        // unsafe should actually be safe because JS is single threaded.
         KEK_BUF.copy_from_slice(key_encryption_key);
     }
     password.zeroize();
@@ -63,6 +64,11 @@ pub fn set_master_key(mut master_key: Vec<u8>) {
         AES_CIPHER = Some(Aes256Gcm::new_from_slice(&MASTER_KEY_BUF).unwrap());
     }
     master_key.zeroize();
+}
+
+#[wasm_bindgen]
+pub fn logged_in() -> bool {
+    unsafe { AES_CIPHER.is_some() }
 }
 
 #[wasm_bindgen]
@@ -99,11 +105,10 @@ pub fn aes_encrypt(mut data: Vec<u8>, nonce: &[u8]) -> Vec<u8> {
 #[wasm_bindgen]
 pub fn aes_decrypt(ciphertext: Vec<u8>, nonce: &[u8]) -> Packet {
     let cipher = unsafe { AES_CIPHER.as_ref().unwrap() };
-    let data: Box<[u8]> =
-        cipher
-            .decrypt(&Nonce::try_from(nonce).unwrap(), ciphertext.as_ref())
-            .unwrap()
-            .into_boxed_slice();
+    let data: Box<[u8]> = cipher
+        .decrypt(&Nonce::try_from(nonce).unwrap(), ciphertext.as_ref())
+        .unwrap()
+        .into_boxed_slice();
     let size = data.len() as u32;
     let static_data = Box::leak::<'static>(data);
 

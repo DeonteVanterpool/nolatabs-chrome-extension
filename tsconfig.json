@@ -3,6 +3,8 @@
     "target": "ES6",
     "types": ["chrome", "jest"],
     "lib": ["dom", "dom.iterable", "esnext"],
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
     "allowJs": false,
     "skipLibCheck": true,
     "sourceMap": true,
