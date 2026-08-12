@@ -1,7 +1,7 @@
+import {Result} from "true-myth";
 import * as db from "../db/storage";
-import {createDefaultUser, setDevMode} from "../logic/user";
-import {User} from "src/models/user";
-import {uuid} from "./cryptography";
+import {User, UserSettings} from "src/models/user";
+import {ok} from "true-myth/result";
 
 export async function get(): Promise<User | null> {
     try {
@@ -11,13 +11,15 @@ export async function get(): Promise<User | null> {
     }
 }
 
-export async function welcome(devMode: boolean, passwordHash: string, masterKeySalt: string): Promise<void> {
-    let user = createDefaultUser(uuid(), "me", passwordHash, masterKeySalt);
-
-    user = setDevMode(user, devMode);
-    await db.createUser(user);
-}
-
 export async function checkWelcomeStatus(): Promise<boolean> {
     return !!get();
 }
+
+export async function fetchSettings(): Promise<Result<UserSettings, string>> {
+    return ok((await db.fetchMe()).settings);
+}
+
+export async function setSettings(settings: UserSettings): Promise<boolean> {
+    return await db.setSettings(settings);
+}
+

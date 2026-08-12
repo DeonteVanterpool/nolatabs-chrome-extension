@@ -9,7 +9,7 @@ import {Result, Unit} from 'true-myth';
 import {err, ok} from 'true-myth/result';
 import {createCommit, defaultCommitGraph, calculateDifference, buildSnapshot} from 'src/libs/logic/git';
 import * as browserWindow from 'src/libs/handlers/browserWindow';
-import {sha2Hash, uuid} from './cryptography';
+import * as crypto from './cryptography';
 
 // match any string
 const stringRegex = /.+/;
@@ -55,12 +55,12 @@ export async function handleCommit(args: string[]): Promise<Result<Commit, Strin
     const commitGraph = defaultCommitGraph(await db.readCommits(repoId.value));
 
     const hashInput = new CommitHashInput(me.id, message, timestamp, tabs, parents);
-    const hash = await sha2Hash(hashInput.stringify());
+    const hash = await crypto.sha2Hash(crypto.encode(hashInput.stringify()) as Uint8Array<ArrayBuffer>);
 
     // create the commit
     const snapshotReader = (hash: string) => buildSnapshot(commitGraph, hash)
     const difference = calculateDifference(parents, tabs, snapshotReader);
-    const newCommit = createCommit(hash, me.id, timestamp, message, difference, parents);
+    const newCommit = createCommit(crypto.decode(hash), me.id, timestamp, message, difference, parents);
 
     // update storage
     await db.saveCommitAndUpdateBranch(repoId.value, newCommit, currentlyOpenedBranchId);
@@ -162,6 +162,10 @@ export async function handleTouch(args: string[]): Promise<Result<string, string
 
     const repoName = args[0]
 
+    return await touch(repoName);
+}
+
+export async function touch(repoName: string): Promise<Result<string, string>> {
     const [currentWindow, me] = await Promise.all([await browserWindow.getCurrentlyFocusedWindow(), await db.fetchMe()]);
     if (!currentWindow.id) {
         return err("no currently focused window id?")
@@ -169,8 +173,8 @@ export async function handleTouch(args: string[]): Promise<Result<string, string
     if (!currentWindow.sessionId) {
         return err("no currently focused session id?")
     }
-    const repoId = uuid()
-    const branchId = uuid()
+    const repoId = crypto.uuid()
+    const branchId = crypto.uuid()
 
     const repo = git.createRepository(repoId, repoName, me.id);
     const branch = git.createBranch(branchId, "main", repoId)
@@ -179,7 +183,7 @@ export async function handleTouch(args: string[]): Promise<Result<string, string
     await db.upsertBranch(branch.id, repoId, branch.name, branch.tipHash);
     await state.createWindowStateForRepo(null, null, repoId, branchId);
 
-    return ok(repoId);
+    return ok(repoId)
 }
 
 // FUNCTIONS:

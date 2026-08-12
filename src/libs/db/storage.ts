@@ -1,6 +1,7 @@
 import {Dexie, EntityTable} from 'dexie';
 import {CommitMode, User} from 'src/models/user';
 import * as git from 'src/models/git';
+import * as user from 'src/models/user';
 import {Repository} from 'src/models/git';
 import Result, {err, ok} from 'true-myth/result';
 import {Unit} from 'true-myth';
@@ -9,8 +10,8 @@ interface UserInfo {
     username: string,
     id: string,
     email: string,
-    passwordVerification: string,
-    masterKeySalt: string,
+    passwordVerification: Uint8Array,
+    passwordSalt: Uint8Array,
     premium: boolean,
 }
 
@@ -178,11 +179,16 @@ export const fetchMe = async (): Promise<User> => {
         id: userInfo.id,
         premium: userInfo.premium,
         passwordVerification: userInfo.passwordVerification,
-        masterKeySalt: userInfo.masterKeySalt,
+        passwordSalt: userInfo.passwordSalt,
         settings: {
             ...userSettings
         }
     } satisfies User;
+}
+
+export const setSettings = async (settings: user.UserSettings): Promise<boolean> => {
+    const rows = await db.userSettings.update("global_config", settings);
+    return (rows === 1);
 }
 
 export const hasUser = async (): Promise<boolean> => {

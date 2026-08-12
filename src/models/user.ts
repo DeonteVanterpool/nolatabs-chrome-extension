@@ -4,8 +4,8 @@ export type User = {
     readonly email: string;
     readonly premium: boolean;
     readonly settings: UserSettings;
-    readonly passwordVerification: string; // this key needs to be strong (use a kdf function), and a second hash used to verify the password (separate from the master key)
-    readonly masterKeySalt: string;
+    readonly passwordVerification: Uint8Array; // this key needs to be strong (use a kdf function), and a second hash used to verify the password (separate from the master key)
+    readonly passwordSalt: Uint8Array;
 }
 
 export type CommitMode = "smart" | "timer" | "greedy"; // smart: commit whenever idle for 30 second

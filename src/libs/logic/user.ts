@@ -5,14 +5,14 @@ export function setDevMode(user: User, devMode: boolean): User {
     return user;
 }
 
-export function createDefaultUser(id: string, username: string, passwordVerification: string, masterKeySalt: string): User {
+export function createDefaultUser(id: string, username: string, passwordVerification: Uint8Array, masterKeySalt: Uint8Array): User {
     return {
         id,
         username,
         email: "",
         premium: false,
         passwordVerification,
-        masterKeySalt,
+        passwordSalt: masterKeySalt,
         settings: {
             devMode: false,
             autoCommit: true,

@@ -1,7 +1,5 @@
 import React, {useEffect, useState} from 'react';
 import './Main.css'
-import {Repository} from 'src/models/repository';
-import { CommandPaletteMessage } from 'src/models/messages';
 import Sidebar from '../components/Sidebar/Sidebar';
 import {useLocation, useNavigate} from 'react-router-dom';
 import CommandPalette from '../components/CommandPalette';
@@ -9,6 +7,7 @@ import CommandPalette from '../components/CommandPalette';
 interface Props {}
 
 const Main: React.FC<Props> = () => {
+    /*
     const [repos, setRepos] = useState<Repository[]>([]);
 
     const navigate = useNavigate();
@@ -134,6 +133,7 @@ const Main: React.FC<Props> = () => {
             </div>
         </div>
     );
+    */
     return <div></div>
 };
 

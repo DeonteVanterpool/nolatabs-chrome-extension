@@ -1,9 +1,10 @@
 declare module '*.css';
 declare module '*.scss';
 
-declare module '*.svg' {
-  const url: string;
-  export default url;
+declare module "*.svg" {
+  import type * as React from "react";
+  const ReactComponent: React.FC<React.SVGProps<SVGSVGElement>>;
+  export default ReactComponent;
 }
 
 declare module '*.png' { const url: string; export default url; }

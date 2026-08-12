@@ -1,4 +1,4 @@
-import init, {argon2_verify_password, argon2_set_password, logged_in, aes_encrypt, aes_decrypt, Packet} from 'src/wasm/crypto/pkg/crypto.js';
+import init, {get_public_key, sign, argon2_verify_password, argon2_set_password, logged_in, aes_encrypt, aes_decrypt, Packet} from 'src/wasm/crypto/pkg/crypto.js';
 
 const decoder = new TextDecoder();
 const encoder = new TextEncoder();
@@ -38,7 +38,7 @@ export function uuid(): string {
     return crypto.randomUUID();
 }
 
-export async function handleIsLoggedIn() {
+export async function isLoggedIn() {
     await requireWasm;
     return logged_in();
 }
@@ -66,3 +66,36 @@ export function decode(data: Uint8Array): string {
     return decoder.decode(data);
 }
 
+/**
+* Generate a salt of length bytes using the Web Crypto API. The default length is 16 bytes (128 bits). 
+* @param [length=16] The length of the salt in bytes. Must be a positive integer.
+* */
+export function generateSalt(length = 16): Uint8Array {
+    const array = new Uint8Array(length);
+    return crypto.getRandomValues(array);
+}
+
+export function uint8ArrayToBase64(data: Uint8Array): string {
+    let binary = '';
+    for (let i = 0; i < data.length; i++) {
+        binary += String.fromCharCode(data[i]);
+    }
+    return btoa(binary);
+}
+
+export function base64ToUint8Array(base64: string): Uint8Array {
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+    }
+    return bytes;
+}
+
+export function public_key(): string {
+    return decode(get_public_key());
+}
+
+export function sign_message(data: Uint8Array): string {
+    return decode(sign(data));
+}

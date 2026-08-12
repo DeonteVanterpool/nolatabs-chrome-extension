@@ -13,6 +13,7 @@
 //! Note: this library is single threaded because Javascript is single threaded. It will most
 //! likely panic on multithreaded code
 
+use openmls_traits::signatures::Signer;
 use crate::mls_helpers;
 use openmls::key_packages::KeyPackage as OpenMlsKeyPackage;
 use openmls::prelude::tls_codec::Serialize as SerializeOpenMLS;
@@ -60,14 +61,10 @@ pub fn get_storage(nonce: &[u8]) -> Result<Vec<u8>, JsError> {
 /// during get_storage
 
 #[wasm_bindgen]
-
 pub fn load_storage(
     storage: &[u8],
-
     nonce: &[u8],
-
     public_key: &[u8],
-
     identity: &[u8],
 ) -> Result<(), JsError> {
     default_provider()?;
@@ -152,6 +149,27 @@ pub fn create_group() -> Result<Vec<u8>, JsError> {
             .group_id()
             .tls_serialize_detached()?)
         })
+    })
+}
+
+/// get the public key currently stored
+#[wasm_bindgen]
+pub fn get_public_key() -> Result<Vec<u8>, JsError> {
+    CREDENTIALS.with(|c| {
+        let c_ref = c.borrow();
+        let credentials = c_ref.as_ref().ok_or(mls_helpers::MlsError::NoCredentials)?;
+        Ok(credentials.skp.public().to_vec())
+    })
+}
+
+/// sign a message with the current credentials. returns the signature as a vector of bytes
+#[wasm_bindgen]
+pub fn sign(message: &[u8]) -> Result<Vec<u8>, JsError> {
+    CREDENTIALS.with(|c| {
+        let c_ref = c.borrow();
+        let credentials = c_ref.as_ref().ok_or(mls_helpers::MlsError::NoCredentials)?;
+        let signature = credentials.skp.sign(message).map_err(|e| JsError::new(&format!("Signing failed: {e:?}")))?;
+        Ok(signature)
     })
 }
 
@@ -277,9 +295,16 @@ fn read_keypair(
         CREDENTIALS.with(|c| {
             let p_ref = p.borrow();
             let provider = p_ref.as_ref().ok_or(mls_helpers::MlsError::NoProvider)?;
-            let skp = SignatureKeyPair::read(provider.storage(), public_key, CIPHERSUITE.signature_algorithm())
-                .ok_or(mls_helpers::MlsError::NoSkp)?;
-            let cwk = CredentialWithKey { credential: credential.into(), signature_key: public_key.into() };
+            let skp = SignatureKeyPair::read(
+                provider.storage(),
+                public_key,
+                CIPHERSUITE.signature_algorithm(),
+            )
+            .ok_or(mls_helpers::MlsError::NoSkp)?;
+            let cwk = CredentialWithKey {
+                credential: credential.into(),
+                signature_key: public_key.into(),
+            };
             *c.borrow_mut() = Some(Credentials { skp, cwk });
             Ok(())
         })

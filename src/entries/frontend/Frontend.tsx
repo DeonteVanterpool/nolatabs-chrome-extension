@@ -1,6 +1,6 @@
 import React, {useEffect, useState} from 'react';
 import {createHashRouter, RouterProvider, Navigate, Outlet, useLocation} from "react-router-dom";
-import {handleIsLoggedIn, hookLogin} from "src/libs/handlers/cryptography";
+import {isLoggedIn, hookLogin} from "src/libs/handlers/cryptography";
 import Main from './pages/Main';
 import Welcome from './pages/Welcome/Welcome';
 import Login from './pages/Login/Login';
@@ -30,10 +30,10 @@ const AuthGuard: React.FC = () => {
     useEffect(() => { // on mount
         let counter = 0;
         const checkLoggedIn = async () => {
-            const loggedIn = await handleIsLoggedIn();
+            const loggedIn = await isLoggedIn();
             setAuthState(prev => {
                 let tmp = ({...prev, isLoggedIn: loggedIn, isLoading: (++counter < 2)})
-                return tmp
+                return tmp;
             }
             );
         };
