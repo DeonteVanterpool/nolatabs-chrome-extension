@@ -9,6 +9,7 @@ import {Unit} from 'true-myth';
 interface UserInfo {
     username: string,
     id: string,
+    singleton: "global_config",
     email: string,
     passwordVerification: Uint8Array,
     passwordSalt: Uint8Array,
@@ -16,6 +17,7 @@ interface UserInfo {
 }
 
 interface UserSettings {
+    singleton: "global_config",
     devMode: boolean,
     autoCommit: boolean,
     commitIntervalTime: number,
@@ -84,8 +86,8 @@ export default class LocalDB extends Dexie {
     constructor() {
         super('NolaTabsStorage');
         this.version(1).stores({
-            userInfo: '',
-            userSettings: '',
+            userInfo: '&singleton',
+            userSettings: '&singleton',
             repos: '&id, &name, ownerId',
             branches: 'id, name, repoId',
             commits: '&hash, repoId, author, timestamp, message',
@@ -258,15 +260,18 @@ export const renameRepository = async (repoId: string, newName: string): Promise
 }
 
 export const createUser = async (user: User): Promise<Result<Unit, string>> => {
+    console.log("createUser called with user:", user);
     if (await db.userInfo.get("global_config")) { // user present already in database
         return err("user already exists")
     }
     await db.userInfo.add({
+        singleton: "global_config",
         ...user
     } satisfies UserInfo);
 
     await db.userSettings.add({
-        ...user.settings
+        singleton: "global_config",
+        ...user.settings,
     });
 
     return ok()
@@ -280,4 +285,9 @@ export const saveCommitAndUpdateBranch = async (repoId: string, commit: git.Comm
 };
 
 export const hookCreateUser = db.userInfo.hook("creating");
+
+hookCreateUser.subscribe((_primKey, obj) => {
+    console.log("hookCreateUser triggered, sending message to background script.");
+    chrome.runtime.sendMessage({kind: "hookCreateUser", obj: obj});
+})
 

@@ -1,4 +1,4 @@
-export type Message = Command | WelcomeMessage | CheckWelcomeStatusMessage | CloudLoginMessage;
+export type Message = Command | WelcomeMessage | CheckWelcomeStatusMessage | CloudLoginMessage | LocalLoginMessage | CheckLoggedIn;
 
 export interface Command {
     kind: "command",
@@ -10,6 +10,7 @@ export interface WelcomeMessage {
     kind: "welcome",
     devMode: boolean,
     passwordHash: string,
+    passwordSalt: string,
 };
 
 export interface CloudLoginMessage {
@@ -18,6 +19,16 @@ export interface CloudLoginMessage {
     passwordHash: string,
 };
 
+export interface LocalLoginMessage {
+    kind: "locallogin",
+    password: string,
+};
+
 export interface CheckWelcomeStatusMessage {
     kind: "checkWelcomeStatus",
 };
+
+export interface CheckLoggedIn {
+    kind: "checkLoggedIn",
+};
+

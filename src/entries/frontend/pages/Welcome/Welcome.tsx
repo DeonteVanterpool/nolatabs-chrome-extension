@@ -20,6 +20,7 @@ interface Props {
 export interface WelcomeForm {
     devMode: boolean;
     passwordHash: string;
+    passwordSalt: string;
     email: string;
 }
 
@@ -28,11 +29,8 @@ type Page = "welcome" | "createpassword" | "cloudlogin" | "commandStyle";
 const Welcome: React.FC<Props> = ({}) => {
     const [currentPage, setCurrentPage] = useState<Page>("welcome");
 
-    const [form, setform] = useState<WelcomeForm>({devMode: false, passwordHash: "", email: ""});
+    const [form, setForm] = useState<WelcomeForm>({devMode: false, passwordHash: "", passwordSalt: "", email: ""});
 
-    // Navigation Handlers
-    const handleContinue = () => setCurrentPage("commandStyle");
-    const handleBack = () => setCurrentPage("welcome");
 
     const handleSelect = (page: Page) => {
         setCurrentPage(page);
@@ -45,7 +43,7 @@ const Welcome: React.FC<Props> = ({}) => {
                 return <WelcomeStep select={handleSelect} />;
 
             case "createpassword":
-                return <CreatePasswordStep select={handleSelect} form={form} />;
+                return <CreatePasswordStep select={handleSelect} form={form} setform={setForm} />;
 
             case "cloudlogin":
                 return <CloudLoginStep select={handleSelect} />

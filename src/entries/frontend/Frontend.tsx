@@ -4,8 +4,7 @@ import {isLoggedIn, hookLogin} from "src/libs/handlers/cryptography";
 import Main from './pages/Main';
 import Welcome from './pages/Welcome/Welcome';
 import Login from './pages/Login/Login';
-import {CheckWelcomeStatusMessage} from 'src/models/messages';
-import {hookCreateUser} from 'src/libs/db/storage';
+import {CheckLoggedIn, CheckWelcomeStatusMessage} from 'src/models/messages';
 import './Frontend.css';
 import './theme.css';
 
@@ -30,12 +29,12 @@ const AuthGuard: React.FC = () => {
     useEffect(() => { // on mount
         let counter = 0;
         const checkLoggedIn = async () => {
-            const loggedIn = await isLoggedIn();
+            console.log("checking that user is logged in ")
+            const loggedIn = await chrome.runtime.sendMessage({kind: "checkLoggedIn"} satisfies CheckLoggedIn);
             setAuthState(prev => {
                 let tmp = ({...prev, isLoggedIn: loggedIn, isLoading: (++counter < 2)})
                 return tmp;
-            }
-            );
+            });
         };
         const checkWelcomeStatus = async () => {
             let welcomeStatus: boolean = await chrome.runtime.sendMessage({kind: "checkWelcomeStatus"} satisfies CheckWelcomeStatusMessage);
@@ -52,11 +51,20 @@ const AuthGuard: React.FC = () => {
     // hook to set auth state when db state changes
     useEffect(() => {
         const unsubscribeLogin = hookLogin(() => setAuthState(prev => ({...prev, isLoggedIn: true})));
-        const updateWelcomed = () => setAuthState(prev => ({...prev, isWelcomed: true}));
-        hookCreateUser.subscribe(updateWelcomed);
+        const updateWelcomed = () => {
+            console.log("createUser event detected, updating auth state to welcomed.");
+            setAuthState(prev => ({...prev, isWelcomed: true}));
+        };
+        const callBack = (message: {kind: "hookCreateUser"}) => {
+            console.log("Received message from background script:", message);
+            if (message.kind === "hookCreateUser") {
+                updateWelcomed();
+            }
+        }
+        chrome.runtime.onMessage.addListener(callBack);
         const cleanup = () => {
-            unsubscribeLogin?.();
-            hookCreateUser.unsubscribe(updateWelcomed);
+            chrome.runtime.onMessage.removeListener(callBack);
+            unsubscribeLogin();
         }
         return () => {
             cleanup();

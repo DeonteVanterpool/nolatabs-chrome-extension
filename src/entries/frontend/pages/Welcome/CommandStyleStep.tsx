@@ -15,8 +15,10 @@ const CommandStyleStep: React.FC<Props> = ({form}) => {
         const message: WelcomeMessage = {
             devMode: form.devMode,
             passwordHash: form.passwordHash,
+            passwordSalt: form.passwordSalt,
             kind: "welcome"
         }
+        console.log("Sending welcome message to background script:", message);
         await chrome.runtime.sendMessage(message);
     }
     return (

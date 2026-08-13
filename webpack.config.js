@@ -6,8 +6,6 @@ var webpack = require('webpack'),
     HtmlWebpackPlugin = require('html-webpack-plugin'),
     TerserPlugin = require('terser-webpack-plugin');
 var {CleanWebpackPlugin} = require('clean-webpack-plugin');
-var ReactRefreshWebpackPlugin = require('@pmmmwh/react-refresh-webpack-plugin');
-var ReactRefreshTypeScript = require('react-refresh-typescript').default;
 
 const ASSET_PATH = process.env.ASSET_PATH || '/';
 
@@ -57,6 +55,8 @@ var options = {
         publicPath: ASSET_PATH,
     },
     devServer: {
+        hot: false,
+        liveReload: false,
         client: {
             overlay: {
                 errors: true,   // Show overlay for errors
@@ -109,7 +109,7 @@ var options = {
                         loader: require.resolve('ts-loader'),
                         options: {
                             getCustomTransformers: () => ({
-                                before: [isDevelopment && ReactRefreshTypeScript()].filter(
+                                before: [].filter(
                                     Boolean
                                 ),
                             }),
@@ -171,7 +171,6 @@ var options = {
                 }
             }
         }),
-        isDevelopment && new ReactRefreshWebpackPlugin(),
         new CleanWebpackPlugin({verbose: false}),
         new webpack.ProgressPlugin(),
         // expose and write the allowed env vars on the compiled bundle

@@ -1,6 +1,6 @@
 import React, {ChangeEvent, FormEvent, useState} from 'react';
 import './Settings.css';
-import {UserSettings} from 'src/pages/models/user';
+import {UserSettings} from 'src/models/user';
 
 interface Props {
     handleSave: (arg0: UserSettings) => void | Promise<void>;

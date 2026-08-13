@@ -10,15 +10,19 @@ type Option = "welcome" | "commandStyle";
 
 interface Props {
     select: (option: Option) => void;
-    form: WelcomeForm,
+    form: WelcomeForm;
+    setform: (form: WelcomeForm) => void,
 }
 
-const CreatePasswordStep: React.FC<Props> = ({select, form}) => {
+const CreatePasswordStep: React.FC<Props> = ({select, setform, form}) => {
     const [password, setPassword] = useState<string>("");
 
     const handleSubmit = async () => {
-        let passwordBytes = crypto.encode(password);
-        form.passwordHash = crypto.decode(await crypto.argon2HashMasterKey(passwordBytes, crypto.generateSalt(16)));
+        const passwordBytes = crypto.encode(password);
+        const salt = crypto.generateSalt(16);
+        form.passwordHash = crypto.uint8ArrayToBase64(await crypto.argon2HashMasterKey(passwordBytes, salt));
+        form.passwordSalt = crypto.uint8ArrayToBase64(salt);
+        setform(form);
         passwordBytes.fill(0);
         select("commandStyle");
     }

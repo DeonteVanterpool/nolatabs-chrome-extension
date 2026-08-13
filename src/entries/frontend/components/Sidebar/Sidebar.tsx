@@ -1,6 +1,6 @@
 import React from 'react';
 import Logo from 'src/assets/img/logo.svg';
-import {Repository} from 'src/models/repository';
+import {Repository} from 'src/models/git';
 import './Sidebar.css';
 import Button from '../Button/Button';
 

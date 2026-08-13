@@ -3,7 +3,8 @@ import init, {get_public_key, sign, argon2_verify_password, argon2_set_password,
 const decoder = new TextDecoder();
 const encoder = new TextEncoder();
 
-let requireWasm = init();
+const wasmUrl = chrome.runtime.getURL("crypto_bg.wasm");
+let requireWasm = init(wasmUrl);
 
 export async function encrypt(data: Uint8Array, nonce: Uint8Array): Promise<Uint8Array> {
     await requireWasm;
@@ -28,7 +29,9 @@ export async function sha2Verify(data: Uint8Array<ArrayBuffer>, hash: Uint8Array
     return true;
 }
 
-// takes in password and salt. Returns a verification key, which can be used with passwordVerify
+/** 
+ * Takes in password and salt. Returns a verification key, which can be used with passwordVerify
+ * */
 export async function argon2HashMasterKey(password: Uint8Array, salt: Uint8Array): Promise<Uint8Array> {
     await requireWasm;
     return argon2_set_password(password, salt);
@@ -44,6 +47,7 @@ export async function isLoggedIn() {
 }
 
 export async function passwordVerify(password: Uint8Array, against: Uint8Array, salt: Uint8Array): Promise<boolean> {
+    console.log("password: ", password, "against: ", against, "salt: ", salt)
     await requireWasm;
     return argon2_verify_password(password, against, salt);
 }
