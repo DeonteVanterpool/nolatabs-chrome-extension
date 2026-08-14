@@ -18,12 +18,8 @@ const CreatePasswordStep: React.FC<Props> = ({select, setform, form}) => {
     const [password, setPassword] = useState<string>("");
 
     const handleSubmit = async () => {
-        const passwordBytes = crypto.encode(password);
-        const salt = crypto.generateSalt(16);
-        form.passwordHash = crypto.uint8ArrayToBase64(await crypto.argon2HashMasterKey(passwordBytes, salt));
-        form.passwordSalt = crypto.uint8ArrayToBase64(salt);
+        form.password = password;
         setform(form);
-        passwordBytes.fill(0);
         select("commandStyle");
     }
 

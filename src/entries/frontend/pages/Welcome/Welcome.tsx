@@ -1,7 +1,6 @@
 import React, {FormEvent, useState} from 'react';
 import {CloudLoginMessage, WelcomeMessage} from 'src/models/messages';
 import * as crypto from 'src/libs/handlers/cryptography';
-import {argon2HashMasterKey} from 'src/libs/handlers/cryptography';
 
 import './Welcome.css';
 import WelcomeStep from './WelcomeStep';
@@ -19,8 +18,7 @@ interface Props {
 
 export interface WelcomeForm {
     devMode: boolean;
-    passwordHash: string;
-    passwordSalt: string;
+    password: string;
     email: string;
 }
 
@@ -29,7 +27,7 @@ type Page = "welcome" | "createpassword" | "cloudlogin" | "commandStyle";
 const Welcome: React.FC<Props> = ({}) => {
     const [currentPage, setCurrentPage] = useState<Page>("welcome");
 
-    const [form, setForm] = useState<WelcomeForm>({devMode: false, passwordHash: "", passwordSalt: "", email: ""});
+    const [form, setForm] = useState<WelcomeForm>({devMode: false, password: "", email: ""});
 
 
     const handleSelect = (page: Page) => {

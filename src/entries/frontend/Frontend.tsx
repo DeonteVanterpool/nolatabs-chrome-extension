@@ -25,50 +25,54 @@ const AuthGuard: React.FC = () => {
         isLoading: boolean;
     }>({isWelcomed: false, isLoggedIn: false, isLoading: true});
 
-    // hook to set auth state on mount
-    useEffect(() => { // on mount
-        let counter = 0;
-        const checkLoggedIn = async () => {
-            console.log("checking that user is logged in ")
-            const loggedIn = await chrome.runtime.sendMessage({kind: "checkLoggedIn"} satisfies CheckLoggedIn);
-            setAuthState(prev => {
-                let tmp = ({...prev, isLoggedIn: loggedIn, isLoading: (++counter < 2)})
-                return tmp;
-            });
-        };
-        const checkWelcomeStatus = async () => {
-            let welcomeStatus: boolean = await chrome.runtime.sendMessage({kind: "checkWelcomeStatus"} satisfies CheckWelcomeStatusMessage);
-            setAuthState(prev => {
-                let tmp = ({...prev, isWelcomed: welcomeStatus, isLoading: (++counter < 2)})
-                return tmp;
-            })
-        };
 
-        checkLoggedIn();
-        checkWelcomeStatus();
+    const checkLoggedIn = async () => {
+        const loggedIn = await chrome.runtime.sendMessage(
+            {kind: "checkLoggedIn"} satisfies CheckLoggedIn
+        );
+        return loggedIn;
+    };
+
+    const checkWelcomeStatus = async () => {
+        const welcomeStatus = await chrome.runtime.sendMessage(
+            {kind: "checkWelcomeStatus"} satisfies CheckWelcomeStatusMessage
+        );
+        return welcomeStatus;
+    };
+
+
+    useEffect(() => {
+        (async () => {
+            const [loggedIn, welcomeStatus] = await Promise.all([
+                checkLoggedIn(),
+                checkWelcomeStatus(),
+            ]);
+
+            setAuthState({
+                isWelcomed: welcomeStatus,
+                isLoggedIn: loggedIn,
+                isLoading: false,
+            });
+        })();
     }, []);
 
-    // hook to set auth state when db state changes
     useEffect(() => {
-        const unsubscribeLogin = hookLogin(() => setAuthState(prev => ({...prev, isLoggedIn: true})));
-        const updateWelcomed = () => {
-            console.log("createUser event detected, updating auth state to welcomed.");
-            setAuthState(prev => ({...prev, isWelcomed: true}));
-        };
-        const callBack = (message: {kind: "hookCreateUser"}) => {
-            console.log("Received message from background script:", message);
+        const callBack = async (message: {kind: "hookCreateUser" | "hookLoggedIn"}) => {
             if (message.kind === "hookCreateUser") {
-                updateWelcomed();
+                setAuthState(prev => ({...prev, isWelcomed: true}));
+                return;
             }
-        }
-        chrome.runtime.onMessage.addListener(callBack);
-        const cleanup = () => {
-            chrome.runtime.onMessage.removeListener(callBack);
-            unsubscribeLogin();
-        }
-        return () => {
-            cleanup();
+
+            if (message.kind === "hookLoggedIn") {
+                // IMPORTANT: re-check source of truth after the hook
+                const loggedIn = await checkLoggedIn();
+                setAuthState(prev => ({...prev, isLoggedIn: loggedIn}));
+                return;
+            }
         };
+
+        chrome.runtime.onMessage.addListener(callBack);
+        return () => chrome.runtime.onMessage.removeListener(callBack);
     }, []);
 
     const location = useLocation();
@@ -76,12 +80,14 @@ const AuthGuard: React.FC = () => {
         return <div>Loading...</div>
     }
 
+    console.log("authstate: ", authState);
     let correctPath: string;
     if (!authState.isWelcomed) {
         correctPath = "/welcome";
     } else if (!authState.isLoggedIn) {
         correctPath = "/login";
     } else { // if user is welcomed and signed in
+        console.log("last path")
         correctPath = ["/welcome", "/login"].includes(location.pathname) ? "/" : location.pathname;
     }
 

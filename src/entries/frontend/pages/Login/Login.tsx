@@ -18,12 +18,8 @@ const Login: React.FC<Props> = ({}: Props) => {
     };
 
     const handleLogin = async () => {
-        const passwordBytes = crypto.encode(password);
-        console.log("auth", await authenticate(passwordBytes))
-        if (!(await authenticate(passwordBytes))) {
-            await chrome.runtime.sendMessage({kind: "locallogin", password: password} satisfies LocalLoginMessage);
-        }
-        passwordBytes.fill(0)
+        const success = await chrome.runtime.sendMessage({kind: "locallogin", password: password} satisfies LocalLoginMessage);
+        console.log("Login success:", success);
     }
 
     return <div className="page">

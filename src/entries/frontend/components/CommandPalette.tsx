@@ -4,12 +4,17 @@ import '../Frontend.css';
 interface Command {
     name: string,
     args: DataType[],
-    apply: (arg0: any) => (void | Promise<void>),
+}
+
+interface Execution {
+    command: string,
+    args: string[],
 }
 
 interface Props {
     commands: Command[],
     repoNames: string[],
+    apply: (exec: Execution) => (void | Promise<void>),
 }
 
 export type DataType = "String" | "RepositoryName"
@@ -46,7 +51,7 @@ function splitIgnoringQuotes(input: string): string[] {
     return result;
 }
 
-const CommandPalette: React.FC<Props> = ({commands, repoNames}: Props) => {
+const CommandPalette: React.FC<Props> = ({commands, repoNames, apply}: Props) => {
     let [textInput, setTextInput] = useState<string>("");
     let command = (splitIgnoringQuotes(textInput));
     let args = command.slice(1);
@@ -80,7 +85,10 @@ const CommandPalette: React.FC<Props> = ({commands, repoNames}: Props) => {
         <input value={textInput} autoFocus={true} type="text" className="command-palette" onKeyDown={(e) => {
             if (e.key === "Enter") {
                 console.log(command.slice(1));
-                commands.filter((c) => c.name === command[0]).forEach((v) => v.apply(command.slice(1)));
+                commands.filter((c) => c.name === command[0]).forEach((v) => apply({
+                    command: v.name,
+                    args: command.slice(1),
+                }));
                 setTextInput("");
             }
         }} onChange={(e) => {

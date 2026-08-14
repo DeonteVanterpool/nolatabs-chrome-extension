@@ -13,6 +13,8 @@ export function createDefaultUser(id: string, username: string, passwordVerifica
         premium: false,
         passwordVerification,
         passwordSalt: masterKeySalt,
+        encryptedMasterKey: new Uint8Array(),
+        encryptionKeyNonce: new Uint8Array(),
         settings: {
             devMode: false,
             autoCommit: true,

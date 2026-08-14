@@ -9,8 +9,7 @@ export interface Command {
 export interface WelcomeMessage {
     kind: "welcome",
     devMode: boolean,
-    passwordHash: string,
-    passwordSalt: string,
+    password: string,
 };
 
 export interface CloudLoginMessage {

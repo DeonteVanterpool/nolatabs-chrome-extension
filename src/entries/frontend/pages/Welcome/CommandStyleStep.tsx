@@ -14,8 +14,7 @@ const CommandStyleStep: React.FC<Props> = ({form}) => {
         form.devMode = devMode;
         const message: WelcomeMessage = {
             devMode: form.devMode,
-            passwordHash: form.passwordHash,
-            passwordSalt: form.passwordSalt,
+            password: form.password,
             kind: "welcome"
         }
         console.log("Sending welcome message to background script:", message);

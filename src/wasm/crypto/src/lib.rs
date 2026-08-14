@@ -50,6 +50,25 @@ pub fn argon2_set_password(mut password: Vec<u8>, salt: Vec<u8>) -> Vec<u8> {
     return ret; // ret is a verification key which can live in Javascript and be stored, so we don't have to zeroize it and can make an extra copy here
 }
 
+#[wasm_bindgen]
+pub fn aes_encrypt_kek(mut data: Vec<u8>, nonce: &[u8]) -> Result<Vec<u8>, JsError> {
+    println!("aes_encrypt_kek: data len: {}, nonce len: {}", data.len(), nonce.len());
+    println!("KEK_BUF: {:?}", unsafe { &KEK_BUF });
+    let cipher = unsafe { Aes256Gcm::new_from_slice(&KEK_BUF).unwrap() };
+    let ciphertext = cipher.encrypt(&Nonce::try_from(nonce).unwrap(), data.as_ref()).unwrap();
+    aes_decrypt_kek(ciphertext.clone(), nonce)?;
+    data.zeroize();
+    Ok(ciphertext)
+}
+
+#[wasm_bindgen]
+pub fn aes_decrypt_kek(ciphertext: Vec<u8>, nonce: &[u8]) -> Result<(), JsError> {
+    let cipher = unsafe { Aes256Gcm::new_from_slice(&KEK_BUF)? };
+    let decrypted = cipher.decrypt(&Nonce::try_from(nonce).unwrap(), ciphertext.as_ref())?;
+    set_master_key(decrypted);
+    Ok(())
+}
+
 /// Set the master key in wasm memory. Make sure this master key is randomly generated
 #[wasm_bindgen]
 pub fn set_master_key(mut master_key: Vec<u8>) {
@@ -80,15 +99,26 @@ pub fn clear_master_key() {
 
 #[wasm_bindgen]
 pub fn argon2_verify_password(mut password: Vec<u8>, hash: Vec<u8>, salt: Vec<u8>) -> bool {
-    let mut buf: [u8; 32] = [0; 32];
+    let mut buf: [u8; 64] = [0; 64];
     PASSWORD_HASHER
         .hash_password_into(&password, &salt, &mut buf)
         .unwrap();
     password.zeroize();
-    let result = buf.to_vec();
+    let result = buf.split_at(32).0.to_vec();
     buf.zeroize();
 
     return result == hash;
+}
+
+#[wasm_bindgen]
+pub fn aes_encrypt_key(mut data: Vec<u8>, nonce: &[u8], key: &[u8]) -> Vec<u8> {
+    let cipher = Aes256Gcm::new_from_slice(&key).unwrap();
+    let ciphertext = cipher
+        .encrypt(&Nonce::try_from(nonce).unwrap(), data.as_ref())
+        .unwrap();
+
+    data.zeroize();
+    return ciphertext;
 }
 
 #[wasm_bindgen]
@@ -100,6 +130,19 @@ pub fn aes_encrypt(mut data: Vec<u8>, nonce: &[u8]) -> Vec<u8> {
 
     data.zeroize();
     return ciphertext;
+}
+
+#[wasm_bindgen]
+pub fn aes_decrypt_key(ciphertext: Vec<u8>, nonce: &[u8], key: &[u8]) -> Packet {
+    let cipher = Aes256Gcm::new_from_slice(&key).unwrap();
+    let data: Box<[u8]> = cipher
+        .decrypt(&Nonce::try_from(nonce).unwrap(), ciphertext.as_ref())
+        .unwrap()
+        .into_boxed_slice();
+    let size = data.len() as u32;
+    let static_data = Box::leak::<'static>(data);
+
+    return Packet(size, static_data.as_mut_ptr()); // need mut_ptr to be able to zeroize
 }
 
 #[wasm_bindgen]

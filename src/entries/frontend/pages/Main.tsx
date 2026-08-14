@@ -1,26 +1,29 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useMemo, useState} from 'react';
 import './Main.css'
 import Sidebar from '../components/Sidebar/Sidebar';
 import {useLocation, useNavigate} from 'react-router-dom';
 import CommandPalette from '../components/CommandPalette';
+import {Command} from 'src/models/messages';
+import * as db from 'src/libs/db/storage';
+import {Repository} from 'src/models/git';
 
 interface Props {}
 
 const Main: React.FC<Props> = () => {
-    /*
     const [repos, setRepos] = useState<Repository[]>([]);
 
     const navigate = useNavigate();
     const {search} = useLocation();
 
     const searchParams = new URLSearchParams(search);
-    const owner = searchParams.get("repo-owner");
-    const name = searchParams.get("repo-name");
-
-    const selectedRepo: Repository | undefined = name && owner ? {ownerId: owner, name, branches: []} : undefined;
+    const repoId = searchParams.get("repo-id");
+    const selectedRepo = useMemo(() => {
+        if (!repoId) return undefined;
+        return repos.find((r) => r.id === repoId);
+    }, [repoId, repos]);
 
     async function fetchRepos() {
-        const data = await RepositoryStore.read(chrome.storage.local);
+        const data = await db.fetchRepositories();
         if (data) {
             setRepos(data);
         }
@@ -31,95 +34,37 @@ const Main: React.FC<Props> = () => {
     }, []);
 
     useEffect(() => {
-        if (selectedRepo && (owner !== selectedRepo.ownerId || name !== selectedRepo.name)) {
-            chrome.runtime.sendMessage({action: "cd", args: selectedRepo} as CommandPaletteMessage);
+        if (selectedRepo !== undefined ) {
+            chrome.runtime.sendMessage({kind: "command", action: "cd", args: [selectedRepo.id]} satisfies Command);
         }
-    }, [name, owner]);
-
-    const handleInitRepo = async (args: string[]) => {
-        const repo: Repository = {ownerId: "me", name: args[0], branches: []};
-        await RepositoryStore.create(chrome.storage.local, repo);
-        await fetchRepos();
-        await handleCommitToRepo(args);
-        await handleOpenRepo(args);
-    };
-
-    const handleMkRepo = async (args: string[]) => {
-        let repoName = args[0];
-        await chrome.runtime.sendMessage(MkDirMessage.new(repoName));
-        await handleOpenRepo(args);
-    };
-
-    const handleRmRepo = async (args: string[]) => {
-        let repo = repos.find((r) => r.name === args[0])!;
-        await chrome.runtime.sendMessage(RmMessage.new(repo));
-        await fetchRepos();
-
-        if (name === repo.name && owner === repo.ownerId) {
-            navigate("");
-        }
-    };
-
-    const handleOpenRepo = async (args: string[]) => {
-        let repo = repos.find((r) => r.name === args[0])!;
-        await chrome.runtime.sendMessage(CDMessage.new(repo));
-
-        navigate(`?repo-name=${encodeURIComponent(repo.name)}&repo-owner=${encodeURIComponent(repo.ownerId)}`);
-    };
-
-    const handleMvRepo = async (args: string[]) => {
-        let repo = repos.find((r) => r.name === args[0])!;
-        let newName = args[1];
-        await chrome.runtime.sendMessage(MvMessage.new(repo, newName));
-        await fetchRepos();
-
-        await navigate(`?repo-name=${encodeURIComponent(newName)}&repo-owner=${encodeURIComponent(repo.ownerId)}`);
-    };
-
-    const handleCommitToRepo = async (args: string[]) => {
-        let repo = repos.find((r) => r.name === args[0])!;
-        await chrome.runtime.sendMessage(CommitMessage.new("just committed", repo));
-    };
-
-    const handleCommit = async (args: string[]) => {
-        let message = "just committed"
-        if (args.length === 0) {
-            message = args[0];
-        }
-        if (selectedRepo) {
-            await chrome.runtime.sendMessage(CommitMessage.new(message, selectedRepo));
-        } else {
-            console.warn("Cannot commit: No repository selected");
-        }
-    };
+    }, [selectedRepo]);
 
     let pallete = <CommandPalette commands={[
         {
             name: "commit",
             args: ["String"],
-            apply: handleCommit,
         },
         {
             name: "cd",
             args: ["RepositoryName"],
-            apply: handleOpenRepo,
         },
         {
             name: "rm",
             args: ["RepositoryName"],
-            apply: handleRmRepo,
         },
         {
             name: "init",
             args: ["String"],
-            apply: handleInitRepo,
         },
         {
             name: "mkdir",
             args: ["String"],
-            apply: handleMkRepo,
         }
-    ]} repoNames={repos.map((r) => r.name)} />
+    ]}
+        apply={(exec) => {
+            chrome.runtime.sendMessage({kind: "command", action: exec.command, args: exec.args} satisfies Command);
+        }}
+        repoNames={repos.map((r) => r.name)} />
 
     return (
         <div className="Main">
@@ -133,8 +78,6 @@ const Main: React.FC<Props> = () => {
             </div>
         </div>
     );
-    */
-    return <div></div>
 };
 
 export default Main;

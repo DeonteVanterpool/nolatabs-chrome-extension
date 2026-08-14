@@ -1,4 +1,4 @@
-import init, {get_public_key, sign, argon2_verify_password, argon2_set_password, logged_in, aes_encrypt, aes_decrypt, Packet} from 'src/wasm/crypto/pkg/crypto.js';
+import init, {get_public_key, sign, argon2_verify_password, argon2_set_password, logged_in, aes_encrypt, aes_decrypt, Packet, set_master_key, aes_encrypt_kek, aes_decrypt_kek} from 'src/wasm/crypto/pkg/crypto.js';
 
 const decoder = new TextDecoder();
 const encoder = new TextEncoder();
@@ -14,6 +14,16 @@ export async function encrypt(data: Uint8Array, nonce: Uint8Array): Promise<Uint
 export async function decrypt(ciphertext: Uint8Array, nonce: Uint8Array): Promise<Packet> {
     await requireWasm;
     return aes_decrypt(ciphertext, nonce);
+}
+
+export async function encrypt_kek(data: Uint8Array, nonce: Uint8Array): Promise<Uint8Array> {
+    await requireWasm;
+    return aes_encrypt_kek(data, nonce);
+}
+
+export async function decrypt_kek(data: Uint8Array, nonce: Uint8Array) {
+    await requireWasm;
+    return aes_decrypt_kek(data, nonce);
 }
 
 export async function sha2Hash(data: Uint8Array<ArrayBuffer>): Promise<Uint8Array> {
@@ -34,7 +44,19 @@ export async function sha2Verify(data: Uint8Array<ArrayBuffer>, hash: Uint8Array
  * */
 export async function argon2HashMasterKey(password: Uint8Array, salt: Uint8Array): Promise<Uint8Array> {
     await requireWasm;
-    return argon2_set_password(password, salt);
+    const verification = argon2_set_password(password, salt);
+    console.log("password: ", password)
+    console.log("salt: ", salt)
+    console.log("verification: ", verification)
+    return verification;
+}
+
+export async function setMasterKey(masterkey: Uint8Array): Promise<void> {
+    await requireWasm;
+    const verification = set_master_key(masterkey);
+    console.log("masterkey: ", masterkey)
+    console.log("verification: ", verification)
+    console.log("sent message");
 }
 
 export function uuid(): string {
@@ -43,6 +65,9 @@ export function uuid(): string {
 
 export async function isLoggedIn() {
     await requireWasm;
+    console.log("isloggedin")
+    console.log(logged_in())
+    await chrome.storage.session.set({"masterKey": "set"})
     return logged_in();
 }
 
@@ -55,6 +80,7 @@ export async function passwordVerify(password: Uint8Array, against: Uint8Array, 
 export function hookLogin(f: () => void) {
     const handler = (changes: {[key: string]: chrome.storage.StorageChange}) => {
         if (changes["masterKey"]) {
+            console.log("hookLogin triggered")
             f();
         }
     };

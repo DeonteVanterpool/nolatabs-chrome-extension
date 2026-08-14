@@ -6,6 +6,10 @@ import {openWelcomePage} from "src/libs/handlers/welcome";
 import {fetchMe} from "src/libs/db/storage";
 import * as crypto from "src/libs/handlers/cryptography";
 import {authenticate} from "src/libs/handlers/local_auth";
+import init from 'src/wasm/crypto/pkg/crypto.js';
+
+let url = chrome.runtime.getURL("crypto_bg.wasm");
+let requireWasm = init(url);
 
 // we do this to allow the master key to stay in memory for the duration of the entire session. The alternative would be to store in chrome session storage, which means we have to make copy of the master key whenever we need to use it
 const keepAlive = () => setInterval(chrome.runtime.getPlatformInfo, 20e3);
@@ -67,14 +71,18 @@ chrome.runtime.onMessage.addListener((message: Message, sender, sendResponse): b
                 }
                 break;
             case "checkLoggedIn":
-                sendResponse(await crypto.isLoggedIn());
+                const logged = await crypto.isLoggedIn();
+                console.log("crypto.isLoggedIn(): "+ logged)
+                sendResponse(logged);
                 break;
             case "welcome":
                 message satisfies WelcomeMessage;
+                const passwordSalt = crypto.generateSalt();
+                const passwordHash = crypto.uint8ArrayToBase64(await crypto.argon2HashMasterKey(crypto.encode(message.password), passwordSalt));
                 await user.createLocalUser(
                     message.devMode,
-                    message.passwordHash,
-                    message.passwordSalt,
+                    passwordHash,
+                    crypto.uint8ArrayToBase64(passwordSalt),
                 );
                 sendResponse({success: true})
                 break
@@ -85,12 +93,17 @@ chrome.runtime.onMessage.addListener((message: Message, sender, sendResponse): b
                 const me = await fetchMe();
                 const passwordBytes = crypto.encode(message.password);
                 console.log("bytes", passwordBytes)
-                if (!authenticate(passwordBytes)) {
+                if (!(await authenticate(passwordBytes))) {
                     sendResponse({success: false, error: "Incorrect password"})
                     break
                 }
                 await crypto.argon2HashMasterKey(passwordBytes, me.passwordSalt)
+                console.log("Length of encryptedMasterKey: ", me.encryptedMasterKey.length)
+                console.log("Length of encryptionKeyNonce: ", me.encryptionKeyNonce.length)
+                console.log(me.encryptedMasterKey, me.encryptionKeyNonce)
+                await crypto.decrypt_kek(me.encryptedMasterKey, me.encryptionKeyNonce)
                 passwordBytes.fill(0);
+                chrome.runtime.sendMessage({kind: "hookLoggedIn"})
                 sendResponse({success: true})
                 break;
             default:

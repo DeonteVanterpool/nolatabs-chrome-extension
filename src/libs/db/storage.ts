@@ -13,6 +13,8 @@ interface UserInfo {
     email: string,
     passwordVerification: Uint8Array,
     passwordSalt: Uint8Array,
+    encryptionKeyNonce: Uint8Array,
+    encryptedMasterKey: Uint8Array,
     premium: boolean,
 }
 
@@ -182,6 +184,8 @@ export const fetchMe = async (): Promise<User> => {
         premium: userInfo.premium,
         passwordVerification: userInfo.passwordVerification,
         passwordSalt: userInfo.passwordSalt,
+        encryptedMasterKey: userInfo.encryptedMasterKey,
+        encryptionKeyNonce: userInfo.encryptionKeyNonce,
         settings: {
             ...userSettings
         }
