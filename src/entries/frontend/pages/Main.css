@@ -3,3 +3,22 @@ h1 {
     color: var(--foreground) !important;
     text-decoration: underline;
 }
+
+.mermaid_diagram {
+    width: 100%;
+    height: auto;
+    overflow-y: auto;
+}
+
+.mermaid_diagram svg {
+    width: 100%;
+    height: auto;
+}
+
+.mermaid_diagram svg .commit-label {
+    display: none;
+}
+
+.mermaid_diagram svg .commit-label-bkg {
+    display: none;
+}

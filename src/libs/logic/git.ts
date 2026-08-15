@@ -1,4 +1,5 @@
 import {Addition, Commit, Diff, Deletion, Delta, Branch, Tab, Repository} from "src/models/git";
+import {encode} from "../handlers/cryptography";
 
 type SnapshotReader = (commitHash: string) => Tab[];
 type CommitGraph = (commitHash: string) => Commit;
@@ -23,8 +24,8 @@ export function createCommit(hash: string, author: string, timestamp: Date, mess
 }
 
 export function calculateDifference(
-    parents: string[], 
-    currentTabs: Tab[], 
+    parents: string[],
+    currentTabs: Tab[],
     getSnapshot: SnapshotReader
 ): Diff {
     if (parents.length === 1) { // normal commit
@@ -35,9 +36,9 @@ export function calculateDifference(
             throw new Error(`Failed to calculate diff: Parent commit ${parents[0]} not found`);
         }
     } else if (parents.length === 0) { // initial commit
-        return { additions: currentTabs.map((tab) => ({ tab, after: -1 })), deletions: [] };
+        return {additions: currentTabs.map((tab) => ({tab, after: -1})), deletions: []};
     } else { // merge commit
-        return { additions: [], deletions: [] }; // no evil merges! (i.e. we won't calculate a diff for merge commits, since they don't represent any new changes to the tabs themselves, just a merging of branches)
+        return {additions: [], deletions: []}; // no evil merges! (i.e. we won't calculate a diff for merge commits, since they don't represent any new changes to the tabs themselves, just a merging of branches)
     }
 }
 
@@ -325,3 +326,173 @@ export function createBranch(id: string, name: string, repoId: string): Branch {
         tipHash: null,
     } satisfies Branch;
 }
+export function renderMermaid(commitReader: CommitGraph, head: string): string {
+    // Collect all reachable commits (walk parents backwards from head).
+    const commitsByHash = new Map<string, Commit>();
+    const stack: string[] = [head];
+
+    while (stack.length) {
+        const h = stack.pop()!;
+        if (commitsByHash.has(h)) continue;
+
+        const c = commitReader(h);
+        commitsByHash.set(h, c);
+        for (const p of c.parents) stack.push(p);
+    }
+
+    // Build child adjacency for branch assignment.
+    const children = new Map<string, string[]>(); // parentHash -> childHashes
+    for (const [h] of commitsByHash.entries()) {
+        const c = commitsByHash.get(h)!;
+        for (const p of c.parents) {
+            if (!children.has(p)) children.set(p, []);
+            children.get(p)!.push(h);
+        }
+    }
+    for (const [p, arr] of children.entries()) arr.sort(); // deterministic
+
+    // Topological order of DAG (parents before child) within the collected subgraph.
+    const indegree = new Map<string, number>();
+    for (const h of commitsByHash.keys()) indegree.set(h, 0);
+    for (const [h, c] of commitsByHash.entries()) {
+        for (const p of c.parents) {
+            indegree.set(h, (indegree.get(h) ?? 0) + 1);
+        }
+    }
+
+    const q: string[] = [];
+    for (const [h, deg] of indegree.entries()) if (deg === 0) q.push(h);
+    q.sort();
+
+    const topo: string[] = [];
+    while (q.length) {
+        const cur = q.shift()!;
+        topo.push(cur);
+        for (const ch of children.get(cur) ?? []) {
+            indegree.set(ch, (indegree.get(ch) ?? 0) - 1);
+            if ((indegree.get(ch) ?? 0) === 0) {
+                q.push(ch);
+                q.sort();
+            }
+        }
+    }
+
+    // Branch assignment:
+    // - For each commit, the "first" child keeps the same branch (like a trunk).
+    // - Other children spawn new branches.
+    // - Each branch is named deterministically.
+    const mainBranchName = "main";
+    let branchCounter = 0;
+
+    const branchOfCommit = new Map<string, string>(); // hash -> mermaid branch name
+    const childrenSorted = (arr: string[]) => arr.slice().sort();
+
+    // Find a root-ish commit to act as main start.
+    const rootCandidates = topo.filter((h) => (commitsByHash.get(h)!.parents.length === 0));
+    const rootForMain = rootCandidates.length ? rootCandidates.sort()[0] : head;
+
+    branchOfCommit.set(rootForMain, mainBranchName);
+
+    for (const h of topo) {
+        const c = commitsByHash.get(h)!;
+        const curBranch = branchOfCommit.get(h);
+        if (!curBranch) continue;
+
+        const cs = childrenSorted(children.get(h) ?? []);
+        if (!cs.length) continue;
+
+        // First child continues on the same branch.
+        branchOfCommit.set(cs[0], curBranch);
+
+        // Remaining children become new branches.
+        for (let i = 1; i < cs.length; i++) {
+            branchOfCommit.set(cs[i], `b${branchCounter++}`);
+        }
+    }
+
+    const escapeMermaidString = (s: string) =>
+        s.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n");
+
+    const lines: string[] = [];
+    lines.push(`gitGraph BT:`);
+
+    let currentBranch = mainBranchName;
+    const emitted = new Set<string>();
+
+    for (const h of topo) {
+        const c = commitsByHash.get(h)!;
+
+        // Wait until all parents are emitted (helps with merge syntax ordering).
+        let ready = true;
+        for (const p of c.parents) {
+            if (!emitted.has(p)) {
+                ready = false;
+                break;
+            }
+        }
+        if (!ready) continue;
+
+        const myBranch = branchOfCommit.get(h) ?? mainBranchName;
+
+        if (c.parents.length > 1) {
+            const [targetParent, ...otherParents] = c.parents;
+            const targetBranch = branchOfCommit.get(targetParent) ?? mainBranchName;
+
+            if (targetBranch !== currentBranch) {
+                lines.push(`checkout ${targetBranch}`);
+                currentBranch = targetBranch;
+            }
+
+            for (const op of otherParents) {
+                const sourceBranch = branchOfCommit.get(op) ?? mainBranchName;
+                if (sourceBranch !== targetBranch) {
+                    lines.push(`merge ${sourceBranch}`);
+                }
+            }
+
+            // Merge commit with message label
+            const label = escapeMermaidString(c.message);
+            lines.push(`commit id: "${bytesToHex(encode(h))}" tag: "${label}"`);
+            emitted.add(h);
+            continue;
+        }
+
+        if (c.parents.length === 0) {
+            if (currentBranch !== mainBranchName) {
+                lines.push(`checkout ${mainBranchName}`);
+                currentBranch = mainBranchName;
+            }
+            const label = escapeMermaidString(c.message);
+            lines.push(`commit id: "${bytesToHex(encode(h))}" tag: "${label}"`);
+            emitted.add(h);
+            continue;
+        }
+
+        // Normal commit
+        const parent = c.parents[0];
+        const parentBranch = branchOfCommit.get(parent) ?? mainBranchName;
+
+        if (myBranch !== parentBranch) {
+            lines.push(`checkout ${myBranch}`);
+            currentBranch = myBranch;
+        } else if (currentBranch !== myBranch) {
+            lines.push(`checkout ${myBranch}`);
+            currentBranch = myBranch;
+        }
+
+        const label = escapeMermaidString(c.message);
+        lines.push(`commit id: "${bytesToHex(encode(h))}" tag: "${label}"`);
+        emitted.add(h);
+    }
+
+    return lines.join("\n");
+}
+
+function bytesToHex(bytes: Uint8Array): string {
+  let out = "";
+  for (let i = 0; i < Math.min(bytes.length, Math.ceil(bytes.length / 2)); i++) {
+    out += bytes[i].toString(16).padStart(2, "0");
+  }
+  return out;
+}
+

@@ -18,7 +18,7 @@ const repoNameRegex = /^[\w.\-/]+$/
 // COMMANDS:
 /** Creates a new commit with the given author, message, and tabs, and updates the branch pointer to point to the new commit.
 * args: [message: string] */
-export async function handleCommit(args: string[]): Promise<Result<Commit, String>> {
+export async function handleCommit(args: string[]): Promise<Result<Commit, string>> {
     const currentWindowId = (await browserWindow.getCurrentlyFocusedWindow()).id;
     if (!currentWindowId) {
         return err("no currently focused window id?")
@@ -55,6 +55,7 @@ export async function handleCommit(args: string[]): Promise<Result<Commit, Strin
     const commitGraph = defaultCommitGraph(await db.readCommits(repoId.value));
 
     const hashInput = new CommitHashInput(me.id, message, timestamp, tabs, parents);
+    console.log("hash: ", hashInput.stringify())
     const hash = await crypto.sha2Hash(crypto.encode(hashInput.stringify()) as Uint8Array<ArrayBuffer>);
 
     // create the commit
@@ -66,6 +67,51 @@ export async function handleCommit(args: string[]): Promise<Result<Commit, Strin
     await db.saveCommitAndUpdateBranch(repoId.value, newCommit, currentlyOpenedBranchId);
 
     return ok(newCommit);
+}
+
+export async function handleInit(args: string[]): Promise<Result<Unit, string>> {
+    // input validation
+    if (args.length < 1 || args[0].trim() === "") {
+        return err("Not enough arguments provided for init command. Expected at least 1 arguments: init <repoName>");
+    }
+    if (!repoNameRegex.test(args[0])) {
+        return err("Invalid repo name. Message must contain only alpha numeric characters and hyphens");
+    }
+
+    const repoName = args[0]
+
+    const initResult = await init(repoName);
+    if (initResult.isErr) {
+        return err(initResult.error);
+    }
+
+    return ok();
+}
+
+export async function init(repoName: string): Promise<Result<Unit, string>> {
+    const [currentWindow, me] = await Promise.all([await browserWindow.getCurrentlyFocusedWindow(), await db.fetchMe()]);
+    console.log("currentwindow: ", currentWindow)
+    if (!currentWindow.id) {
+        return err("no currently focused window id?")
+    }
+    if (!currentWindow.sessionId) {
+        console.log("no currently focused session id?")
+    }
+    const repoId = crypto.uuid()
+    const branchId = crypto.uuid()
+
+    console.log("creating repo")
+    const repo = git.createRepository(repoId, repoName, me.id);
+    console.log("creating branch")
+    const branch = git.createBranch(branchId, "main", repoId)
+
+    console.log("creating repo in db")
+    await db.createRepository(repo);
+    console.log("creating branch in db")
+    await db.upsertBranch(branch.id, repoId, branch.name, branch.tipHash);
+    console.log("creating window state in db")
+    await state.createWindowStateForRepo(currentWindow.id, currentWindow.sessionId ?? null, repoId, branchId);
+    return ok();
 }
 
 /** command to change directory into a repo
@@ -84,11 +130,10 @@ export async function handleEdit(args: string[]): Promise<Result<Unit, string>> 
     if (repoId.isErr) {
         return err(repoId.error);
     }
-    if (currentlyOpenedRepository.isErr) {
-        return err(currentlyOpenedRepository.error);
-    }
-    if (repoId.value === currentlyOpenedRepository.value) {
-        return err("repo is already open");
+    if (!currentlyOpenedRepository.isErr) {
+        if (repoId.value === currentlyOpenedRepository.value) {
+            return err("repo is already open");
+        }
     }
 
     // edit the repo
@@ -153,6 +198,7 @@ export async function handleMv(args: string[]) {
  * args: [repoName: string] **/
 export async function handleTouch(args: string[]): Promise<Result<string, string>> {
     // input validation
+    console.log("handleTouch", args);
     if (args.length < 1 || args[0].trim() === "") {
         return err("Not enough arguments provided for touch command. Expected at least 1 arguments: touch <repoName>");
     }
@@ -165,22 +211,114 @@ export async function handleTouch(args: string[]): Promise<Result<string, string
     return await touch(repoName);
 }
 
-export async function touch(repoName: string): Promise<Result<string, string>> {
-    const [currentWindow, me] = await Promise.all([await browserWindow.getCurrentlyFocusedWindow(), await db.fetchMe()]);
+export async function handleBranch(args: string[]): Promise<Result<string, string>> {
+    // input validation
+    console.log("handleBranch", args);
+    if (args.length < 1 || args[0].trim() === "") {
+        return err("Not enough arguments provided for branch command. Expected at least 1 arguments: branch <branchName>");
+    }
+    if (!stringRegex.test(args[0])) {
+        return err("Invalid branch name. Message must be a non-empty string.");
+    }
+
+    const branchName = args[0]
+
+    return await branch(branchName);
+}
+
+export async function branch(branchName: string): Promise<Result<string, string>> {
+    console.log("branch", branchName);
+    const [currentWindow] = await Promise.all([await browserWindow.getCurrentlyFocusedWindow(), await db.fetchMe()]);
     if (!currentWindow.id) {
         return err("no currently focused window id?")
     }
     if (!currentWindow.sessionId) {
-        return err("no currently focused session id?")
+        console.log("no currently focused session id?")
+    }
+    const repoIdRes = await helpers.getCurrentlyFocusedRepoId();
+    if (repoIdRes.isErr) {
+        return err(repoIdRes.error);
+    }
+    const repoId = repoIdRes.value;
+
+    const branchId = crypto.uuid()
+
+    console.log("creating branch")
+    const branch = git.createBranch(branchId, branchName, repoId)
+
+    console.log("creating branch in db")
+    await db.upsertBranch(branch.id, repoId, branch.name, branch.tipHash);
+
+    return ok(branchId)
+}
+
+export async function handleCheckout(args: string[]): Promise<Result<Unit, string>> {
+    // input validation
+    console.log("handleCheckout", args);
+    if (args.length < 1 || args[0].trim() === "") {
+        return err("Not enough arguments provided for checkout command. Expected at least 1 arguments: checkout <branchName>");
+    }
+    if (!stringRegex.test(args[0])) {
+        return err("Invalid branch name. Message must be a non-empty string.");
+    }
+
+    const branchName = args[0]
+
+    return await checkout(branchName);
+}
+
+export async function checkout(branchName: string): Promise<Result<Unit, string>> {
+    console.log("checkout", branchName);
+    const [currentWindow] = await Promise.all([await browserWindow.getCurrentlyFocusedWindow(), await db.fetchMe()]);
+    if (!currentWindow.id) {
+        return err("no currently focused window id?")
+    }
+    if (!currentWindow.sessionId) {
+        console.log("no currently focused session id?")
+    }
+    const repoIdRes = await helpers.getCurrentlyFocusedRepoId();
+    if (repoIdRes.isErr) {
+        return err(repoIdRes.error);
+    }
+    const repoId = repoIdRes.value;
+    
+    console.log(branchName)
+    const branchIdRes = await db.fetchBranchIdByName(repoId, branchName);
+    if (branchIdRes.isErr) {
+        return err(branchIdRes.error);
+    }
+    const branchId = branchIdRes.value;
+
+    console.log("checking out branch: ", branchName, "branchId: ", branchId, "repoId: ", repoId)
+    await state.updateWindowStateForRepo(currentWindow.id, currentWindow.sessionId ?? null, repoId, branchId);
+    console.log("updated window state for repoId: ", repoId, "branchId: ", branchId)
+
+    return ok()
+}
+
+export async function touch(repoName: string): Promise<Result<string, string>> {
+    console.log("touch", repoName);
+    const [currentWindow, me] = await Promise.all([await browserWindow.getCurrentlyFocusedWindow(), await db.fetchMe()]);
+    console.log("currentwindow: ", currentWindow)
+    if (!currentWindow.id) {
+        return err("no currently focused window id?")
+    }
+    if (!currentWindow.sessionId) {
+        console.log("no currently focused session id?")
     }
     const repoId = crypto.uuid()
     const branchId = crypto.uuid()
 
+    console.log("creating repo")
     const repo = git.createRepository(repoId, repoName, me.id);
+    console.log("creating branch")
     const branch = git.createBranch(branchId, "main", repoId)
 
+    console.log("creating repo in db")
     await db.createRepository(repo);
+    console.log("creating branch in db")
     await db.upsertBranch(branch.id, repoId, branch.name, branch.tipHash);
+    console.log("creating window state in db")
     await state.createWindowStateForRepo(null, null, repoId, branchId);
 
     return ok(repoId)
@@ -189,22 +327,27 @@ export async function touch(repoName: string): Promise<Result<string, string>> {
 // FUNCTIONS:
 async function edit(repoId: string): Promise<Result<Unit, string>> {
     const currentWindow = await browserWindow.getCurrentlyFocusedWindow();
+    console.log("currentwindow: ", currentWindow)
     if (!currentWindow.id) {
         return err("no currently focused window id?")
     }
     if (!currentWindow.sessionId) {
-        return err("no currently focused session id?")
+        console.log("no currently focused session id?")
     }
     const currentWindowState = await state.fetchStateForWindow(currentWindow.id);
     if (currentWindowState && repoId === currentWindowState.repoId) { // repo already open. No need to edit
+        console.log("repo already open. No need to edit")
         return ok();
     }
 
+    console.log("editing repo: ", repoId)
     // prepare inputs to get the tabs from the repository we need to cd into
     const currentlyOpenedBranchId = await state.fetchCurrentlyOpenedBranchForRepo(repoId);
 
+    console.log("currentlyOpenedBranchId: ", currentlyOpenedBranchId)
     // update browser
-    await state.updateWindowStateForRepo(currentWindow.id, currentWindow.sessionId, repoId, currentlyOpenedBranchId);
+    await state.updateWindowStateForRepo(currentWindow.id, currentWindow.sessionId ?? null, repoId, currentlyOpenedBranchId);
+    console.log("updated window state for repoId: ", repoId, "branchId: ", currentlyOpenedBranchId)
 
     return ok()
 }
@@ -215,9 +358,34 @@ export async function listRepositories(): Promise<Repository[]> {
     return repositories;
 }
 
+export async function renderGraph(): Promise<Result<string, string>> {
+    // optional: allow “graph <branchId>” later; for now use the currently opened branch
+    const repoIdRes = await helpers.getCurrentlyFocusedRepoId();
+    if (repoIdRes.isErr) return err(repoIdRes.error);
+    const repoId = repoIdRes.value;
+
+    const branchId = await state.fetchCurrentlyOpenedBranchForRepo(repoId);
+    if (!branchId) return err("No branch is currently opened for this repo");
+
+    const tip = await db.readBranchTip(branchId);
+    if (tip.isErr) return err(tip.error);
+
+    if (!tip.value) {
+        // empty repo: no commits => empty graph
+        return ok(`gitGraph TB\ncommit id: "empty"`);
+    }
+
+    const commits = await db.readCommits(repoId);
+    const commitGraph = defaultCommitGraph(commits);
+
+    const mermaid = git.renderMermaid(commitGraph, tip.value);
+    return ok(mermaid);
+}
+
 // HOOKS:
 // clear tabs when a window state is deleted
 state.getHook()("deleting", function (wid, _obj) {
+    console.log("deleting window state for windowId: ", wid)
     if (wid) {
         this.onsuccess = async () => {
             await browserWindow.clearUnpinnedTabs(wid);
@@ -232,21 +400,29 @@ const openBranchTabs = async (wid: number, repoId: string, branchId: string) => 
     }
     const commitGraph = defaultCommitGraph(await db.readCommits(repoId));
     const latestSnapshotTabs = branchTip.value ? buildSnapshot(commitGraph, branchTip.value).map((t) => t.url) : []; // if there is no branch tip, then we have no tabs to open because the snapshot is empty
+    console.log("clearing unpinned tabs for windowId: ", wid)
     await browserWindow.clearUnpinnedTabs(wid);
+    console.log("opening tabs for windowId: ", wid, "repoId: ", repoId, "branchId: ", branchId, "tabs: ", latestSnapshotTabs)
     await browserWindow.createTabs(wid, latestSnapshotTabs);
 }
 
 // open specific branch from repo whenever window state changes
 state.getHook()("creating", function (wid, obj) {
+    console.log("creating window state for windowId: ", wid, "repoId: ", obj.repoId, "branchId: ", obj.branchId)
     if (wid) {
         this.onsuccess = async () => {
+            console.log("opening tabs for windowId: ", wid, "repoId: ", obj.repoId, "branchId: ", obj.branchId)
             openBranchTabs(wid, obj.repoId, obj.branchId)
+        }
+        this.onerror = async (error) => {
+            console.error("error opening tabs for windowId: ", wid, "repoId: ", obj.repoId, "branchId: ", obj.branchId, "error: ", error)
         }
     }
 })
 
 // open specific branch from repo whenever window state changes
 state.getHook()("updating", function (this, mods: Partial<{branchId: string, repoId: string}>, wid, _oldObject, _transaction) {
+    console.log("updating window state for windowId: ", wid, "repoId: ", mods.repoId, "branchId: ", mods.branchId)
     if (
         wid &&
         typeof mods.branchId === "string" &&
@@ -261,6 +437,7 @@ state.getHook()("updating", function (this, mods: Partial<{branchId: string, rep
 })
 
 async function updateSessionId(window: chrome.windows.Window) {
+    console.log("updating session id for window: ", window.id, "sessionId: ", window.sessionId)
     if (window.id && window.sessionId) {
         await state.updateWindowIdForSession(window.sessionId, window.id);
     }

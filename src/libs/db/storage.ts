@@ -162,11 +162,11 @@ export const createCommit = async (repoId: string, commit: git.Commit) => await 
 export const upsertBranch = async (id: string, repoId: string, branchName: string, tipHash: string | null) => {
     const existingBranch = await db.branches.get(id);
     if (existingBranch) {
-        await db.branches.update(id, {tip: tipHash, name: branchName, repoId});
+        await db.branches.update(id, {tip: tipHash, repoId});
     } else {
-        await db.branches.add({name: branchName, id, repoId: repoId, tip: tipHash});
+        await db.branches.add({name: branchName, id, repoId, tip: tipHash});
     }
-}
+};
 
 export const fetchMe = async (): Promise<User> => {
     const userInfo = await db.userInfo.get("global_config");
@@ -203,7 +203,7 @@ export const hasUser = async (): Promise<boolean> => {
 }
 
 export const createRepository = async (repo: Repository) => {
-    await db.repos.add({ ...repo } satisfies Repo)
+    await db.repos.add({...repo} satisfies Repo)
 }
 
 export const fetchRepositories = async (): Promise<Repository[]> => {
@@ -259,7 +259,7 @@ export const deleteRepository = async (repoId: string): Promise<Result<Unit, str
 }
 
 export const renameRepository = async (repoId: string, newName: string): Promise<Result<Unit, string>> => {
-    await db.repos.update(repoId, { name: newName });
+    await db.repos.update(repoId, {name: newName});
     return ok()
 }
 
@@ -281,10 +281,10 @@ export const createUser = async (user: User): Promise<Result<Unit, string>> => {
     return ok()
 }
 
-export const saveCommitAndUpdateBranch = async (repoId: string, commit: git.Commit, branchId: string) => {
+export const saveCommitAndUpdateBranch = async (repoId: string, commit: git.Commit, branchId: string, branchName: string | null) => {
     return await db.transaction('rw', [db.commits, db.branches, db.additions, db.deletions, db.commitsParents, db.tabs], async () => {
         await createCommit(repoId, commit);
-        await upsertBranch(branchId, repoId, branchId, commit.hash);
+        await upsertBranch(branchId, repoId, branchName ?? "main", commit.hash);
     });
 };
 
@@ -295,3 +295,28 @@ hookCreateUser.subscribe((_primKey, obj) => {
     chrome.runtime.sendMessage({kind: "hookCreateUser", obj: obj});
 })
 
+export const fetchBranchIdByName = async (repoId: string, branchName: string): Promise<Result<string, string>> => {
+    const branches = await db.branches.where("repoId").equals(repoId).and(b => b.name === branchName).toArray();
+    console.log("branches found for repoId:", repoId, "branchName:", branchName, "branches:", branches);
+    console.log(await db.branches.where("repoId").equals(repoId).toArray());
+    if (branches.length > 1) {
+        return err("multiple branches with same name");
+    }
+    if (branches.length < 1) {
+        return err("no branch of name: " + branchName);
+    }
+    return ok(branches[0].id);
+}
+
+export const fetchBranchById = async (branchId: string): Promise<Result<git.Branch, string>> => {
+    const branch = await db.branches.get(branchId);
+    if (!branch) {
+        return err("no branch for given id: " + branchId);
+    }
+    return ok({
+        id: branch.id,
+        name: branch.name,
+        repoId: branch.repoId,
+        tipHash: branch.tip
+    } satisfies git.Branch);
+}

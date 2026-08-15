@@ -1,8 +1,9 @@
 import {Dexie, EntityTable} from 'dexie';
+Dexie.debug = true;
 
 interface State {
     windowId: number | null,
-    sessionId: string | null, // sessionId is undefined if the window does not have a session id
+    sessionId: string | null, // sessionId is null if the window does not have a session id
     repoId: string, // references Repo.id in schema.ts
     branchId: string, // references Branch.id in schema.ts
 }
@@ -13,7 +14,7 @@ export default class LocalState extends Dexie {
     constructor() {
         super('NolaTabsState');
         this.version(1).stores({
-            state: 'windowId, &sessionId, &repoId, &branchId', // one repo per session
+            state: 'windowId, sessionId, &repoId, &branchId', // one repo per session
         });
     }
 }
@@ -50,15 +51,48 @@ export function getHook() {
     return db.state.hook;
 }
 
+async function normalizeWindowId(windowId: number | null): Promise<number> {
+    let min = 0;
+    await db.state.where("windowId").below(0).each((state) => {
+        if (state.windowId !== null && state.windowId < min) {
+            min = state.windowId;
+        }
+    });
+    if (windowId === null) {
+        return min - 1;
+    }
+    return windowId;
+}
+
 export async function updateWindowStateForRepo(windowId: number | null, sessionId: string | null, repoId: string, branchId: string) {
     await db.transaction("rw", [db.state], async () => {
         const prev = await db.state.get(windowId);
         if (prev) {
-            await db.state.update(windowId, {...prev, windowId: null, sessionId: null});
+            const normalizedWindowId = await normalizeWindowId(null);
+            const alreadyExists = await db.state.get(normalizedWindowId);
+            if (alreadyExists) {
+                throw new Error(`Window state already exists for normalized windowId: ${normalizedWindowId}. Cannot update to this windowId.`);
+            }
+            console.log(`Window state already exists for windowId: ${windowId}. Updating to new windowId: ${normalizedWindowId} and clearing sessionId.`);
+            await db.state.delete(windowId);
+            console.log(`Deleted previous window state for windowId: ${windowId}. Now adding...`);
+            await db.state.add({
+                ...prev,
+                windowId: normalizedWindowId,
+                sessionId: null,
+            });
         }
-        const modified = await db.state.where("repoId").equals(repoId).modify({windowId: windowId, sessionId: sessionId, branchId: branchId})
-        if (!modified) {
-            throw new Error("no open window state for given repo")
+        const normalized = await normalizeWindowId(windowId);
+        console.log(`Updating window state for repoId: ${repoId}, branchId: ${branchId}, windowId: ${windowId}, normalized: ${normalized} sessionId: ${sessionId}`);
+        const alreadyExists = await db.state.get(normalized);
+        if (alreadyExists) {
+            throw new Error(`Window state already exists for normalized windowId: ${normalized}. See additinoal context: wid: ${alreadyExists.windowId}, repoId: ${alreadyExists.repoId}`)
+        }
+        const modified = await db.state.where("repoId").equals(repoId).delete()
+        await createWindowStateForRepo(normalized, sessionId, repoId, branchId)
+        console.log("updated")
+        if (!modified || modified > 1) {
+            throw new Error("no open window state for given repo, or multiple deletions")
         }
     });
 }
@@ -70,6 +104,8 @@ export async function updateWindowIdForSession(sessionId: string, windowId: numb
 }
 
 export async function createWindowStateForRepo(windowId: number | null, sessionId: string | null, repoId: string, branchId: string) {
+    windowId = await normalizeWindowId(windowId);
+    console.log(`Creating window state for repoId: ${repoId}, branchId: ${branchId}, windowId: ${windowId}, sessionId: ${sessionId}`);
     await db.state.add({windowId, sessionId, repoId, branchId});
 }
 

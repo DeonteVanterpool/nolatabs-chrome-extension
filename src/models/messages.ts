@@ -1,4 +1,4 @@
-export type Message = Command | WelcomeMessage | CheckWelcomeStatusMessage | CloudLoginMessage | LocalLoginMessage | CheckLoggedIn;
+export type Message = Command | WelcomeMessage | CheckWelcomeStatusMessage | CloudLoginMessage | LocalLoginMessage | CheckLoggedIn | RenderMermaidMessage;
 
 export interface Command {
     kind: "command",
@@ -10,6 +10,10 @@ export interface WelcomeMessage {
     kind: "welcome",
     devMode: boolean,
     password: string,
+};
+
+export interface RenderMermaidMessage {
+    kind: "rendermermaid",
 };
 
 export interface CloudLoginMessage {

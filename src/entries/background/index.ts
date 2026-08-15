@@ -50,7 +50,18 @@ const commandRouter = {
     "mv": async (args: string[]) => {
         return await unix.handleMv(args);
     },
+    "init": async (args: string[]) => {
+        return await unix.handleInit(args);
+    },
+    "branch": async (args: string[]) => {
+        return await unix.handleBranch(args);
+    },
+    "checkout": async (args: string[]) => {
+        return await unix.handleCheckout(args);
+    }
 } satisfies CommandRouter;
+
+type Response = any;
 
 // command handler
 chrome.runtime.onMessage.addListener((message: Message, sender, sendResponse): boolean => {
@@ -59,56 +70,87 @@ chrome.runtime.onMessage.addListener((message: Message, sender, sendResponse): b
     if (sender.origin !== chrome.runtime.id && chrome.runtime.id !== "deonte@asimslaboratory.com") {
         return false;
     }
-    console.log("Received message: ", message.kind);
-    messageQueue.then(async () => {
-        console.log("Processing message: ", message.kind);
-        switch (message.kind) {
-            case "command":
-                if (message.action in commandRouter) {
-                    sendResponse(await commandRouter[message.action as keyof typeof commandRouter](message.args))
-                } else {
-                    throw new Error("unrecognized command: " + message.action); // responses come back untyped, so its better to throw here instead of using Result types
-                }
-                break;
-            case "checkLoggedIn":
-                const logged = await crypto.isLoggedIn();
-                console.log("crypto.isLoggedIn(): "+ logged)
-                sendResponse(logged);
-                break;
-            case "welcome":
-                message satisfies WelcomeMessage;
-                const passwordSalt = crypto.generateSalt();
-                const passwordHash = crypto.uint8ArrayToBase64(await crypto.argon2HashMasterKey(crypto.encode(message.password), passwordSalt));
-                await user.createLocalUser(
-                    message.devMode,
-                    passwordHash,
-                    crypto.uint8ArrayToBase64(passwordSalt),
-                );
-                sendResponse({success: true})
-                break
-            case "checkWelcomeStatus":
-                sendResponse(await user.checkWelcomeStatus())
-                break;
-            case "locallogin":
-                const me = await fetchMe();
-                const passwordBytes = crypto.encode(message.password);
-                console.log("bytes", passwordBytes)
-                if (!(await authenticate(passwordBytes))) {
-                    sendResponse({success: false, error: "Incorrect password"})
+    console.log("Received message: ", message);
+    messageQueue = messageQueue.then(async () => {
+        await requireWasm;
+        let response: Response;
+        try {
+            console.log("Processing message: ", message.kind);
+            switch (message.kind) {
+                case "command":
+                    console.log("exucuting command")
+                    if (message.action in commandRouter) {
+                        const res = await commandRouter[message.action as keyof typeof commandRouter](message.args)
+                        if (res.isOk) {
+                            response = {success: true, ...(res.value as Record<string, unknown> ?? {})};
+                        } else {
+                            response = {success: false, ...{error: res.error}};
+                        }
+                        console.log(response);
+                    } else {
+                        response = {success: false, error: "unrecognized command: " + message.action} as Response;
+                        console.log(response);
+                    }
+                    console.log("exutude")
+                    chrome.runtime.sendMessage({kind: "hookCommandExecuted", action: message.action, args: message.args, response: response});
+                    break;
+                case "checkLoggedIn":
+                    const logged = await crypto.isLoggedIn();
+                    console.log("crypto.isLoggedIn(): " + logged)
+                    response = {success: logged};
+                    break;
+                case "welcome":
+                    console.log("Received welcome message: ", message);
+                    message satisfies WelcomeMessage;
+                    const passwordSalt = crypto.generateSalt();
+                    console.log("salting");
+                    const passwordHash = crypto.uint8ArrayToBase64(await crypto.argon2HashMasterKey(crypto.encode(message.password), passwordSalt));
+                    console.log("hashing");
+                    console.log("creating local user");
+                    await user.createLocalUser(
+                        message.devMode,
+                        passwordHash,
+                        crypto.uint8ArrayToBase64(passwordSalt),
+                    );
+                    response = {success: true};
                     break
-                }
-                await crypto.argon2HashMasterKey(passwordBytes, me.passwordSalt)
-                console.log("Length of encryptedMasterKey: ", me.encryptedMasterKey.length)
-                console.log("Length of encryptionKeyNonce: ", me.encryptionKeyNonce.length)
-                console.log(me.encryptedMasterKey, me.encryptionKeyNonce)
-                await crypto.decrypt_kek(me.encryptedMasterKey, me.encryptionKeyNonce)
-                passwordBytes.fill(0);
-                chrome.runtime.sendMessage({kind: "hookLoggedIn"})
-                sendResponse({success: true})
-                break;
-            default:
-                throw new Error("unrecognized message: " + message)
+                case "checkWelcomeStatus":
+                    response = await user.checkWelcomeStatus();
+                    break;
+                case "locallogin":
+                    const me = await fetchMe();
+                    const passwordBytes = crypto.encode(message.password);
+                    console.log("bytes", passwordBytes)
+                    if (!(await authenticate(passwordBytes))) {
+                        response = {success: false, error: "Incorrect password"} as Response;
+                        break
+                    }
+                    await crypto.argon2HashMasterKey(passwordBytes, me.passwordSalt)
+                    console.log("Length of encryptedMasterKey: ", me.encryptedMasterKey.length)
+                    console.log("Length of encryptionKeyNonce: ", me.encryptionKeyNonce.length)
+                    console.log(me.encryptedMasterKey, me.encryptionKeyNonce)
+                    await crypto.decrypt_kek(me.encryptedMasterKey, me.encryptionKeyNonce)
+                    passwordBytes.fill(0);
+                    chrome.runtime.sendMessage({kind: "hookLoggedIn"})
+                    response = {success: true}
+                    break;
+                case "rendermermaid":
+                    const diagram = await unix.renderGraph();
+                    if (diagram.isOk) {
+                        response = {success: true, diagram: diagram.value}
+                    } else {
+                        response = { success: false, error: diagram.error }
+                    }
+                    break
+                default:
+                    response = {success: false, error: "unrecognized message: " + message.kind} as Response;
+            }
+        } catch (error) {
+            console.error("Error processing message: ", error);
+            response = {success: false, error: "Error processing message: " + (error as Error).message} as Response;
         }
+        console.log("Sending response: ", response);
+        sendResponse(response)
     });
     console.log("Message queue length: ", messageQueue);
     return true;
