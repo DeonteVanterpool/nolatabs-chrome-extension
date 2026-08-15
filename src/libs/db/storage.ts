@@ -162,7 +162,7 @@ export const createCommit = async (repoId: string, commit: git.Commit) => await 
 export const upsertBranch = async (id: string, repoId: string, branchName: string, tipHash: string | null) => {
     const existingBranch = await db.branches.get(id);
     if (existingBranch) {
-        await db.branches.update(id, {tip: tipHash, repoId});
+        await db.branches.update(id, {tip: tipHash, repoId, name: branchName});
     } else {
         await db.branches.add({name: branchName, id, repoId, tip: tipHash});
     }
@@ -281,7 +281,12 @@ export const createUser = async (user: User): Promise<Result<Unit, string>> => {
     return ok()
 }
 
-export const saveCommitAndUpdateBranch = async (repoId: string, commit: git.Commit, branchId: string, branchName: string | null) => {
+export const saveCommitAndUpdateBranch = async (repoId: string, commit: git.Commit, branchId: string) => {
+    const branch = await db.branches.get(branchId);
+    if (!branch) {
+        throw new Error("Branch not found for given id: " + branchId);
+    }
+    const branchName = branch.name;
     return await db.transaction('rw', [db.commits, db.branches, db.additions, db.deletions, db.commitsParents, db.tabs], async () => {
         await createCommit(repoId, commit);
         await upsertBranch(branchId, repoId, branchName ?? "main", commit.hash);

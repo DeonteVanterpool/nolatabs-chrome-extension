@@ -246,8 +246,17 @@ export async function branch(branchName: string): Promise<Result<string, string>
     console.log("creating branch")
     const branch = git.createBranch(branchId, branchName, repoId)
 
-    console.log("creating branch in db")
-    await db.upsertBranch(branch.id, repoId, branch.name, branch.tipHash);
+    const currentlyOpenedBranchId = await state.fetchCurrentlyOpenedBranchForRepo(repoId);
+    const currentlyOpenedBranchTipRes = await db.readBranchTip(currentlyOpenedBranchId);
+    let currentlyOpenedBranchTip;
+    if (currentlyOpenedBranchTipRes.isErr) {
+        console.log("error reading currently opened branch tip: ", currentlyOpenedBranchTipRes.error)
+        currentlyOpenedBranchTip = null;
+    } else {
+        currentlyOpenedBranchTip = currentlyOpenedBranchTipRes.value;
+    }
+
+    await db.upsertBranch(branch.id, repoId, branch.name, currentlyOpenedBranchTip);
 
     return ok(branchId)
 }

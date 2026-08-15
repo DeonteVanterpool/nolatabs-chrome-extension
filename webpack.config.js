@@ -223,6 +223,10 @@ var options = {
             chunks: ['frontend'],
             cache: false,
         }),
+        new webpack.DefinePlugin({
+            'process.env.TARGET_BROWSER': JSON.stringify(TARGET_BROWSER),
+            'typeof browser': JSON.stringify(TARGET_BROWSER === 'firefox' ? 'object' : 'undefined'),
+        }),
         new CopyWebpackPlugin({
             patterns: [
                 {
