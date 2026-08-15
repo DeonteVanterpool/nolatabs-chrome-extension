@@ -326,16 +326,10 @@ export function createBranch(id: string, name: string, repoId: string): Branch {
         tipHash: null,
     } satisfies Branch;
 }
-export function renderMermaid(commitReader: CommitGraph, heads: string[]): string {
-    const uniqueHeads = Array.from(new Set(heads.filter((h) => h && h.trim() !== "")));
-
-    if (uniqueHeads.length === 0) {
-        return `gitGraph TB\ncommit id: "empty"`;
-    }
-
-    // Collect all reachable commits from ALL heads.
+export function renderMermaid(commitReader: CommitGraph, head: string): string {
+    // Collect all reachable commits (walk parents backwards from head).
     const commitsByHash = new Map<string, Commit>();
-    const stack: string[] = [...uniqueHeads];
+    const stack: string[] = [head];
 
     while (stack.length) {
         const h = stack.pop()!;
@@ -361,7 +355,7 @@ export function renderMermaid(commitReader: CommitGraph, heads: string[]): strin
     const indegree = new Map<string, number>();
     for (const h of commitsByHash.keys()) indegree.set(h, 0);
     for (const [h, c] of commitsByHash.entries()) {
-        for (const _p of c.parents) {
+        for (const p of c.parents) {
             indegree.set(h, (indegree.get(h) ?? 0) + 1);
         }
     }
@@ -384,6 +378,9 @@ export function renderMermaid(commitReader: CommitGraph, heads: string[]): strin
     }
 
     // Branch assignment:
+    // - For each commit, the "first" child keeps the same branch (like a trunk).
+    // - Other children spawn new branches.
+    // - Each branch is named deterministically.
     const mainBranchName = "main";
     let branchCounter = 0;
 
@@ -392,11 +389,12 @@ export function renderMermaid(commitReader: CommitGraph, heads: string[]): strin
 
     // Find a root-ish commit to act as main start.
     const rootCandidates = topo.filter((h) => (commitsByHash.get(h)!.parents.length === 0));
-    const rootForMain = rootCandidates.length ? rootCandidates.sort()[0] : uniqueHeads[0];
+    const rootForMain = rootCandidates.length ? rootCandidates.sort()[0] : head;
 
     branchOfCommit.set(rootForMain, mainBranchName);
 
     for (const h of topo) {
+        const c = commitsByHash.get(h)!;
         const curBranch = branchOfCommit.get(h);
         if (!curBranch) continue;
 
@@ -497,3 +495,4 @@ function bytesToHex(bytes: Uint8Array): string {
   }
   return out;
 }
+
