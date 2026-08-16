@@ -326,173 +326,212 @@ export function createBranch(id: string, name: string, repoId: string): Branch {
         tipHash: null,
     } satisfies Branch;
 }
-export function renderMermaid(commitReader: CommitGraph, head: string): string {
-    // Collect all reachable commits (walk parents backwards from head).
-    const commitsByHash = new Map<string, Commit>();
-    const stack: string[] = [head];
 
-    while (stack.length) {
-        const h = stack.pop()!;
-        if (commitsByHash.has(h)) continue;
-
-        const c = commitReader(h);
-        commitsByHash.set(h, c);
-        for (const p of c.parents) stack.push(p);
-    }
-
-    // Build child adjacency for branch assignment.
-    const children = new Map<string, string[]>(); // parentHash -> childHashes
-    for (const [h] of commitsByHash.entries()) {
-        const c = commitsByHash.get(h)!;
-        for (const p of c.parents) {
-            if (!children.has(p)) children.set(p, []);
-            children.get(p)!.push(h);
+function commitBelongsToBranch(commitHash: string, branchTipHash: string, commitReader: CommitGraph): boolean {
+    let currentCommitHash = branchTipHash;
+    while (currentCommitHash) {
+        if (currentCommitHash === commitHash) {
+            return true;
         }
-    }
-    for (const [p, arr] of children.entries()) arr.sort(); // deterministic
-
-    // Topological order of DAG (parents before child) within the collected subgraph.
-    const indegree = new Map<string, number>();
-    for (const h of commitsByHash.keys()) indegree.set(h, 0);
-    for (const [h, c] of commitsByHash.entries()) {
-        for (const p of c.parents) {
-            indegree.set(h, (indegree.get(h) ?? 0) + 1);
+        let currentCommit = commitReader(currentCommitHash);
+        if (!currentCommit) {
+            throw new Error(`Commit ${currentCommitHash} not found`);
         }
+        if (currentCommit.parents.length === 0) {
+            break; // reached the root commit
+        }
+        currentCommitHash = currentCommit.parents[0]; // follow the first parent
     }
+    return false;
+}
 
-    const q: string[] = [];
-    for (const [h, deg] of indegree.entries()) if (deg === 0) q.push(h);
-    q.sort();
+function buildCommitBranches(
+    commitReader: CommitGraph,
+    branchTips: Map<string, string>
+): Map<string, string[]> {
+    const commitBranches = new Map<string, string[]>();
 
-    const topo: string[] = [];
-    while (q.length) {
-        const cur = q.shift()!;
-        topo.push(cur);
-        for (const ch of children.get(cur) ?? []) {
-            indegree.set(ch, (indegree.get(ch) ?? 0) - 1);
-            if ((indegree.get(ch) ?? 0) === 0) {
-                q.push(ch);
-                q.sort();
-            }
+    // Gather all commit hashes reachable from branch tips (first-parent chain)
+    const allCommitHashes = new Set<string>();
+    for (const [, tipHash] of branchTips) {
+        let cur: string | undefined = tipHash;
+        const seen = new Set<string>();
+        while (cur && !seen.has(cur)) {
+            seen.add(cur);
+            allCommitHashes.add(cur);
+
+            const c = commitReader(cur);
+            if (!c || c.parents.length === 0) break;
+            cur = c.parents[0];
         }
     }
 
-    // Branch assignment:
-    // - For each commit, the "first" child keeps the same branch (like a trunk).
-    // - Other children spawn new branches.
-    // - Each branch is named deterministically.
-    const mainBranchName = "main";
-    let branchCounter = 0;
-
-    const branchOfCommit = new Map<string, string>(); // hash -> mermaid branch name
-    const childrenSorted = (arr: string[]) => arr.slice().sort();
-
-    // Find a root-ish commit to act as main start.
-    const rootCandidates = topo.filter((h) => (commitsByHash.get(h)!.parents.length === 0));
-    const rootForMain = rootCandidates.length ? rootCandidates.sort()[0] : head;
-
-    branchOfCommit.set(rootForMain, mainBranchName);
-
-    for (const h of topo) {
-        const c = commitsByHash.get(h)!;
-        const curBranch = branchOfCommit.get(h);
-        if (!curBranch) continue;
-
-        const cs = childrenSorted(children.get(h) ?? []);
-        if (!cs.length) continue;
-
-        // First child continues on the same branch.
-        branchOfCommit.set(cs[0], curBranch);
-
-        // Remaining children become new branches.
-        for (let i = 1; i < cs.length; i++) {
-            branchOfCommit.set(cs[i], `b${branchCounter++}`);
+    // For each commit, test membership against each branch using your helper
+    for (const commitHash of allCommitHashes) {
+        const branches: string[] = [];
+        for (const [branchName, tipHash] of branchTips) {
+            if (commitBelongsToBranch(commitHash, tipHash, commitReader)) {
+                branches.push(branchName);
+            }
         }
+
+        // Optional deterministic ordering
+        branches.sort((a, b) => a.localeCompare(b));
+
+        commitBranches.set(commitHash, branches);
     }
 
-    const escapeMermaidString = (s: string) =>
-        s.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n");
+    return commitBranches;
+}
 
-    const lines: string[] = [];
-    lines.push(`gitGraph BT:`);
+export function renderMermaid(
+    commitReader: CommitGraph,
+    tip: string,
+    branchTips: Map<string, string>
+): string {
+    const lines: string[] = ["gitGraph BT:"];
 
-    let currentBranch = mainBranchName;
-    const emitted = new Set<string>();
+    const commitBranchesMap = buildCommitBranches(commitReader, branchTips);
 
-    for (const h of topo) {
-        const c = commitsByHash.get(h)!;
+    const currentTipBranch =
+        Array.from(branchTips.entries()).find(([, t]) => t === tip)?.[0] ?? "main";
 
-        // Wait until all parents are emitted (helps with merge syntax ordering).
-        let ready = true;
-        for (const p of c.parents) {
-            if (!emitted.has(p)) {
-                ready = false;
-                break;
-            }
+    const esc = (s: string) => s.replace(/"/g, '\\"');
+    const tagFor = (hash: string) => {
+        const c = commitReader(hash);
+        const msg = String(c?.message ?? "").split("\n")[0].trim();
+        return msg ? ` tag: "${esc(msg)}"` : "";
+    };
+
+    const sortBranchesForCommit = (branches: string[]): string[] => {
+        const uniq = Array.from(new Set(branches));
+        uniq.sort((a, b) => {
+            const aIsCurrent = a === currentTipBranch;
+            const bIsCurrent = b === currentTipBranch;
+            if (aIsCurrent && !bIsCurrent) return -1;
+            if (!aIsCurrent && bIsCurrent) return 1;
+            return a.localeCompare(b);
+        });
+        return uniq;
+    };
+
+    for (const [k, v] of commitBranchesMap.entries()) {
+        commitBranchesMap.set(k, sortBranchesForCommit(v));
+    }
+
+    const commitOwner = new Map<string, string>();
+    for (const [h, bs] of commitBranchesMap.entries()) {
+        if (bs.length > 0) commitOwner.set(h, bs[0]);
+    }
+
+    const declaredBranches = new Set<string>();
+    let currentBranch = "main";
+
+    // Mermaid runtime heads
+    const liveHead = new Map<string, string>();
+    liveHead.set("main", "__root__");
+
+    const hasRealCommit = (branch: string) => {
+        const h = liveHead.get(branch);
+        return !!h && h !== "__root__";
+    };
+
+    const ensureBranch = (branch: string) => {
+        if (branch === "main") return;
+        if (!declaredBranches.has(branch)) {
+            lines.push(`branch ${branch}`);
+            declaredBranches.add(branch);
+            // New branch starts from currently checked out branch head
+            liveHead.set(branch, liveHead.get(currentBranch) ?? "__root__");
         }
-        if (!ready) continue;
+    };
 
-        const myBranch = branchOfCommit.get(h) ?? mainBranchName;
+    const checkoutIfNeeded = (branch: string) => {
+        ensureBranch(branch);
+        if (currentBranch !== branch) {
+            lines.push(`checkout ${branch}`);
+            currentBranch = branch;
+        }
+    };
 
-        if (c.parents.length > 1) {
-            const [targetParent, ...otherParents] = c.parents;
-            const targetBranch = branchOfCommit.get(targetParent) ?? mainBranchName;
+    const emittedNodes = new Set<string>(); // commit hashes already represented in diagram
+    const visited = new Set<string>();
 
-            if (targetBranch !== currentBranch) {
-                lines.push(`checkout ${targetBranch}`);
-                currentBranch = targetBranch;
-            }
+    const emitCommit = (hash: string) => {
+        if (emittedNodes.has(hash)) return;
+        const id = bytesToHex(hash);
+        lines.push(`commit id: "${id}"${tagFor(hash)}`);
+        emittedNodes.add(hash);
+        liveHead.set(currentBranch, id);
+    };
 
-            for (const op of otherParents) {
-                const sourceBranch = branchOfCommit.get(op) ?? mainBranchName;
-                if (sourceBranch !== targetBranch) {
-                    lines.push(`merge ${sourceBranch}`);
-                }
-            }
+    const walk = (hash: string | undefined) => {
+        if (!hash || visited.has(hash)) return;
+        visited.add(hash);
 
-            // Merge commit with message label
-            const label = escapeMermaidString(c.message);
-            lines.push(`commit id: "${bytesToHex(encode(h))}" tag: "${label}"`);
-            emitted.add(h);
-            continue;
+        const commit = commitReader(hash);
+        if (!commit) return;
+
+        const owningBranches = commitBranchesMap.get(hash) ?? [currentTipBranch];
+        const destinationBranch = owningBranches[0];
+
+        checkoutIfNeeded(destinationBranch);
+
+        // first-parent first
+        if (commit.parents.length > 0) {
+            walk(commit.parents[0]);
         }
 
-        if (c.parents.length === 0) {
-            if (currentBranch !== mainBranchName) {
-                lines.push(`checkout ${mainBranchName}`);
-                currentBranch = mainBranchName;
-            }
-            const label = escapeMermaidString(c.message);
-            lines.push(`commit id: "${bytesToHex(encode(h))}" tag: "${label}"`);
-            emitted.add(h);
-            continue;
+        const isMergeCommit = commit.parents.length > 1;
+
+        if (!isMergeCommit) {
+            emitCommit(hash);
+            return;
         }
 
-        // Normal commit
-        const parent = c.parents[0];
-        const parentBranch = branchOfCommit.get(parent) ?? mainBranchName;
+        // Merge commit represented once via merge command (use 2nd parent as source)
+        const parentHash = commit.parents[1];
+        walk(parentHash);
 
-        if (myBranch !== parentBranch) {
-            lines.push(`checkout ${myBranch}`);
-            currentBranch = myBranch;
-        } else if (currentBranch !== myBranch) {
-            lines.push(`checkout ${myBranch}`);
-            currentBranch = myBranch;
-        }
+        const sourceBranch = commitOwner.get(parentHash);
+        if (!sourceBranch) return;
+        if (sourceBranch === destinationBranch) return;
 
-        const label = escapeMermaidString(c.message);
-        lines.push(`commit id: "${bytesToHex(encode(h))}" tag: "${label}"`);
-        emitted.add(h);
+        checkoutIfNeeded(destinationBranch);
+        if (currentBranch !== destinationBranch) return;
+
+        // source must have real commits in emitted Mermaid state
+        if (!hasRealCommit(sourceBranch)) return;
+
+        // prevent merging equivalent heads
+        const srcLive = liveHead.get(sourceBranch);
+        const dstLive = liveHead.get(destinationBranch);
+        if (srcLive && dstLive && srcLive === dstLive) return;
+
+        const mergeId = bytesToHex(hash);
+        lines.push(`merge ${sourceBranch} id: "${mergeId}"${tagFor(hash)}`);
+        emittedNodes.add(hash);
+        liveHead.set(destinationBranch, mergeId);
+    };
+
+    const orderedTips = Array.from(branchTips.entries()).sort(([a], [b]) => {
+        if (a === currentTipBranch && b !== currentTipBranch) return -1;
+        if (b === currentTipBranch && a !== currentTipBranch) return 1;
+        return a.localeCompare(b);
+    });
+
+    for (const [, tipHash] of orderedTips) {
+        walk(tipHash);
     }
 
     return lines.join("\n");
 }
 
-function bytesToHex(bytes: Uint8Array): string {
-  let out = "";
-  for (let i = 0; i < Math.min(bytes.length, Math.ceil(bytes.length / 2)); i++) {
-    out += bytes[i].toString(16).padStart(2, "0");
-  }
-  return out;
+function bytesToHex(data: string): string {
+    const bytes = encode(data);
+    let out = "";
+    for (let i = 0; i < bytes.length; i++) {
+        out += bytes[i].toString(16).padStart(2, "0");
+    }
+    return out;
 }
-

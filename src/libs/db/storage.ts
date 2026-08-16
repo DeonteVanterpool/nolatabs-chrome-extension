@@ -325,3 +325,13 @@ export const fetchBranchById = async (branchId: string): Promise<Result<git.Bran
         tipHash: branch.tip
     } satisfies git.Branch);
 }
+
+export const fetchBranchesForRepo = async (repoId: string): Promise<Result<git.Branch[], string>> => {
+    const branches = await db.branches.where("repoId").equals(repoId).toArray();
+    return ok(branches.map(b => ({
+        id: b.id,
+        name: b.name,
+        repoId: b.repoId,
+        tipHash: b.tip
+    } satisfies git.Branch)));
+}

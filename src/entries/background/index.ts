@@ -58,6 +58,9 @@ const commandRouter = {
     },
     "checkout": async (args: string[]) => {
         return await unix.handleCheckout(args);
+    },
+    "merge": async (args: string[]) => {
+        return await unix.handleMerge(args);
     }
 } satisfies CommandRouter;
 

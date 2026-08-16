@@ -22,6 +22,7 @@ const Main: React.FC<Props> = () => {
 
     const [selectedRepo, setSelectedRepo] = useState<Repository | undefined>(undefined);
     const [selectedBranch, setSelectedBranch] = useState<string | undefined>(undefined);
+    const [availableBranches, setAvailableBranches] = useState<string[]>([]);
 
     async function fetchRepos() {
         const data = await db.fetchRepositories();
@@ -40,8 +41,14 @@ const Main: React.FC<Props> = () => {
             getCurrentlyFocusedRepoId().then((result) => {
                 console.log("repo id: ", result);
                 if (result.isOk) {
+                    const repo = repos.find((r) => r.id === result.value);
                     navigate(`/?repo-id=${result.value}`);
-                    setSelectedRepo(repos.find((r) => r.id === result.value));
+                    db.fetchBranchesForRepo(result.value).then((branches) => {
+                        if (branches.isOk) {
+                            setAvailableBranches(branches.value.map((b) => b.name));
+                        }
+                    })
+                    setSelectedRepo(repo);
                     fetchCurrentlyOpenedBranchForRepo(result.value).then((branchResult) => {
                         db.fetchBranchById(branchResult).then((branch) => {
                             if (branch.isOk) {
@@ -117,6 +124,10 @@ const Main: React.FC<Props> = () => {
         {
             name: "checkout",
             args: ["String"],
+        },
+        {
+            name: "merge",
+            args: ["String"],
         }
     ]}
         apply={(exec) => {
@@ -133,7 +144,7 @@ const Main: React.FC<Props> = () => {
             />
             <div className="content">
                 <h1>{selectedRepo ? selectedRepo.name : "no repo selected"}</h1>
-                <h2>{selectedBranch ? selectedBranch : "no branch selected"}</h2>
+                <span><h2>{selectedBranch ? selectedBranch : "no branch selected"}</h2> | {availableBranches.length > 0 ? availableBranches.filter((b) => b !== selectedBranch).join(" ") : "no branches available"}</span>
                 <div className="repo-content">
                     <MermaidDiagram chart={chart} className="mermaid_diagram" />
                 </div>

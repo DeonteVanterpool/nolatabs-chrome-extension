@@ -114,6 +114,84 @@ export async function init(repoName: string): Promise<Result<Unit, string>> {
     return ok();
 }
 
+export async function handleMerge(args: string[]): Promise<Result<Unit, string>> {
+    // input validation
+    if (args.length < 1 || args[0].trim() === "") {
+        return err("Not enough arguments provided for merge command. Expected at least 1 arguments: merge <branchName>");
+    }
+    if (!stringRegex.test(args[0])) {
+        return err("Invalid branch name. Message must be a non-empty string.");
+    }
+
+    const branchName = args[0]
+
+    return await merge(branchName);
+}
+
+export async function merge(branchName: string): Promise<Result<Unit, string>> {
+    const repoIdRes = await helpers.getCurrentlyFocusedRepoId();
+    if (repoIdRes.isErr) {
+        return err(repoIdRes.error);
+    }
+    const repoId = repoIdRes.value;
+
+    const branchIdRes = await db.fetchBranchIdByName(repoId, branchName);
+    if (branchIdRes.isErr) {
+        return err(branchIdRes.error);
+    }
+    const branchId = branchIdRes.value;
+    console.log("merging branch: ", branchName, "branchId: ", branchId, "repoId: ", repoId)
+
+    const currentlyOpenedBranchId = await state.fetchCurrentlyOpenedBranchForRepo(repoId);
+    if (!currentlyOpenedBranchId) {
+        return err("No branch is currently opened for this repo");
+    }
+
+    const currentlyOpenedBranchTipRes = await db.readBranchTip(currentlyOpenedBranchId);
+    if (currentlyOpenedBranchTipRes.isErr) {
+        return err(currentlyOpenedBranchTipRes.error);
+    }
+    const currentlyOpenedBranchTip = currentlyOpenedBranchTipRes.value;
+
+    const branchToMergeTipRes = await db.readBranchTip(branchId);
+    if (branchToMergeTipRes.isErr) {
+        return err(branchToMergeTipRes.error);
+    }
+    const branchToMergeTip = branchToMergeTipRes.value;
+
+    if (!currentlyOpenedBranchTip || !branchToMergeTip) {
+        return err("Cannot merge branches with no commits");
+    }
+
+    const commitGraph = defaultCommitGraph(await db.readCommits(repoId));
+
+    const snapshotReader = (hash: string) => buildSnapshot(commitGraph, hash)
+    const currentlyOpenedBranchSnapshot = snapshotReader(currentlyOpenedBranchTip);
+    const branchToMergeSnapshot = snapshotReader(branchToMergeTip);
+
+    const mergedTabs = [...new Set([...currentlyOpenedBranchSnapshot, ...branchToMergeSnapshot])];
+
+    const mergedTabsDiff = calculateDifference([currentlyOpenedBranchTip, branchToMergeTip], mergedTabs, snapshotReader);
+
+    const timestamp = new Date();
+    const me = await db.fetchMe();
+    const message = `Merge branch '${branchName}' into '${(await db.fetchBranchById(currentlyOpenedBranchId)).map(b => b.name) ?? "unknown"}'`;
+
+    const parents = [currentlyOpenedBranchTip, branchToMergeTip];
+
+    const hashInput = new CommitHashInput(me.id, message, timestamp, mergedTabs, parents);
+    console.log("hash: ", hashInput.stringify())
+    const hash = await crypto.sha2Hash(crypto.encode(hashInput.stringify()) as Uint8Array<ArrayBuffer>);
+
+    // create the commit
+    const newCommit = createCommit(crypto.decode(hash), me.id, timestamp, message, mergedTabsDiff, parents);
+
+    // update storage
+    await db.saveCommitAndUpdateBranch(repoId, newCommit, currentlyOpenedBranchId);
+
+    return ok();
+}
+
 /** command to change directory into a repo
 * args: [repoName: string] **/
 export async function handleEdit(args: string[]): Promise<Result<Unit, string>> {
@@ -368,7 +446,6 @@ export async function listRepositories(): Promise<Repository[]> {
 }
 
 export async function renderGraph(): Promise<Result<string, string>> {
-    // optional: allow “graph <branchId>” later; for now use the currently opened branch
     const repoIdRes = await helpers.getCurrentlyFocusedRepoId();
     if (repoIdRes.isErr) return err(repoIdRes.error);
     const repoId = repoIdRes.value;
@@ -380,14 +457,21 @@ export async function renderGraph(): Promise<Result<string, string>> {
     if (tip.isErr) return err(tip.error);
 
     if (!tip.value) {
-        // empty repo: no commits => empty graph
         return ok(`gitGraph TB\ncommit id: "empty"`);
     }
 
     const commits = await db.readCommits(repoId);
     const commitGraph = defaultCommitGraph(commits);
 
-    const mermaid = git.renderMermaid(commitGraph, tip.value);
+    const branchTips = new Map<string, string>();
+    const branches = await db.fetchBranchesForRepo(repoId);
+    if (branches.isErr) return err(branches.error);
+    for (const branch of branches.value) {
+        if (branch.tipHash) {
+            branchTips.set(branch.name, branch.tipHash);
+        }
+    }
+    const mermaid = git.renderMermaid(commitGraph, tip.value, branchTips);
     return ok(mermaid);
 }
 
