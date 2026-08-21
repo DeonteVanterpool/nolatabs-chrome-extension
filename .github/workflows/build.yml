@@ -30,12 +30,14 @@ jobs:
 
     - name: Build Firefox
       run: |
+        npm i
         npm ci --legacy-peer-deps
         npm run build:firefox
         npm test > test.txt
 
     - name: Build Chrome
       run: |
+        npm i
         npm ci --legacy-peer-deps
         npm run build:chrome
 
