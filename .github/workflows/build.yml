@@ -1,0 +1,53 @@
+name: Build
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x, 22.x]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+
+    - name: Build Firefox
+      run: |
+        npm install
+        npm run build:firefox
+        npm test > test.txt
+
+    - name: Build Chrome
+      run: |
+        npm install
+        npm run build:chrome
+
+    - name: Dry run Minor version for each master merge
+      id: tagDryRun
+      uses: anothrNick/github-tag-action@1.64.0
+      env:
+        GITHUB_TOKEN: ${{ secrets.BUNDLE_GIT_TOKEN }}
+        WITH_V: true
+        DRY_RUN: true
+
+    - name: New Release Tag
+      run: |
+        echo "The next tag version will be: ${{ steps.tagDryRun.outputs.new_tag }}"
+        echo "LATEST_RELEASE=${{ steps.tagDryRun.outputs.new_tag }}" >> $GITHUB_ENV
+            
+    - name: Archive test results
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-results
+        path: test.txt
