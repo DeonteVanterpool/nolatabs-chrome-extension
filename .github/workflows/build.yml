@@ -30,13 +30,13 @@ jobs:
 
     - name: Build Firefox
       run: |
-        npm install
+        npm ci --legacy-peer-deps
         npm run build:firefox
         npm test > test.txt
 
     - name: Build Chrome
       run: |
-        npm install
+        npm ci --legacy-peer-deps
         npm run build:chrome
 
     - name: Dry run Minor version for each master merge
