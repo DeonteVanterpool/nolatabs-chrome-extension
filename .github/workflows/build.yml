@@ -22,6 +22,9 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
 
+    - name: wasm-pack-action
+      uses: jetli/wasm-pack-action@v0.4.0
+
     - name: Build Firefox
       run: |
         npm install
