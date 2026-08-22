@@ -32,7 +32,6 @@ jobs:
       run: |
         npm ci --legacy-peer-deps
         npm run build:firefox
-        npm test > test.txt
 
     - name: Build Chrome
       run: |
@@ -51,9 +50,3 @@ jobs:
       run: |
         echo "The next tag version will be: ${{ steps.tagDryRun.outputs.new_tag }}"
         echo "LATEST_RELEASE=${{ steps.tagDryRun.outputs.new_tag }}" >> $GITHUB_ENV
-            
-    - name: Archive test results
-      uses: actions/upload-artifact@v4
-      with:
-        name: test-results
-        path: test.txt
