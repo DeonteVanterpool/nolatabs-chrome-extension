@@ -9,7 +9,6 @@ import {authenticate} from "src/libs/handlers/local_auth";
 import init from 'src/wasm/crypto/pkg/crypto.js';
 
 let url = chrome.runtime.getURL("crypto_bg.wasm");
-let requireWasm = init(url);
 
 // we do this to allow the master key to stay in memory for the duration of the entire session. The alternative would be to store in chrome session storage, which means we have to make copy of the master key whenever we need to use it
 const keepAlive = () => setInterval(chrome.runtime.getPlatformInfo, 20e3);
@@ -67,7 +66,6 @@ const commandRouter = {
 type Response = any;
 
 const router = async (message: Message) => {
-    await requireWasm;
     let response: Response;
     try {
         console.log("Processing message: ", message.kind);
