@@ -52,9 +52,10 @@ jobs:
     - name: Release
       uses: softprops/action-gh-release@v3
       if: github.event.ref && github.ref == 'refs/heads/main'
+      env:
+        GITHUB_TOKEN: ${{ secrets.BUNDLE_GIT_TOKEN }}
       with:
         tag_name: ${{ steps.createNewTag.outputs.new_tag }}
-        working_directory: dist
         files: |
           output/firefox.zip
           output/chrome.zip
