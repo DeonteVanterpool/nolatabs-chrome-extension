@@ -42,6 +42,7 @@ jobs:
         zip output/chrome.zip dist/chrome/*
 
     - name: Create New Tag
+      id: createNewTag
       uses: anothrNick/github-tag-action@1.64.0
       env:
         GITHUB_TOKEN: ${{ secrets.BUNDLE_GIT_TOKEN }}
@@ -52,6 +53,7 @@ jobs:
       uses: softprops/action-gh-release@v3
       if: github.event.ref && github.ref == 'refs/heads/main'
       with:
+        tag_name: ${{ steps.createNewTag.outputs.new_tag }}
         working_directory: dist
         files: |
           output/firefox.zip
