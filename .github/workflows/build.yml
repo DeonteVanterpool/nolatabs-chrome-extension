@@ -38,15 +38,9 @@ jobs:
         npm ci --legacy-peer-deps
         npm run build:chrome
 
-    - name: Dry run Minor version for each master merge
-      id: tagDryRun
+    - name: Create New Tag
       uses: anothrNick/github-tag-action@1.64.0
       env:
         GITHUB_TOKEN: ${{ secrets.BUNDLE_GIT_TOKEN }}
         WITH_V: true
-        DRY_RUN: true
-
-    - name: New Release Tag
-      run: |
-        echo "The next tag version will be: ${{ steps.tagDryRun.outputs.new_tag }}"
-        echo "LATEST_RELEASE=${{ steps.tagDryRun.outputs.new_tag }}" >> $GITHUB_ENV
+        DRY_RUN: false
