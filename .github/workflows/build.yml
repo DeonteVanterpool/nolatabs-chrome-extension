@@ -32,11 +32,14 @@ jobs:
       run: |
         npm ci --legacy-peer-deps
         npm run build:firefox
+        mkdir -p output
+        zip output/firefox.zip dist/firefox/*
 
     - name: Build Chrome
       run: |
         npm ci --legacy-peer-deps
         npm run build:chrome
+        zip output/chrome.zip dist/chrome/*
 
     - name: Create New Tag
       uses: anothrNick/github-tag-action@1.64.0
@@ -44,3 +47,12 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.BUNDLE_GIT_TOKEN }}
         WITH_V: true
         DRY_RUN: false
+
+    - name: Release
+      uses: softprops/action-gh-release@v3
+      if: github.ref_type == 'tag'
+      with:
+        working_directory: dist
+        files: |
+          output/firefox.zip
+          output/chrome.zip
