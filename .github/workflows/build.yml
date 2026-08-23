@@ -50,7 +50,7 @@ jobs:
 
     - name: Release
       uses: softprops/action-gh-release@v3
-      if: github.ref_type == 'tag'
+      if: github.event.ref && github.ref == 'refs/heads/main'
       with:
         working_directory: dist
         files: |
