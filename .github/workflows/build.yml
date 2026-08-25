@@ -32,21 +32,30 @@ jobs:
       run: |
         npm ci --legacy-peer-deps
         npm run build:firefox
+        mkdir -p output
+        zip output/firefox.zip dist/firefox/*
 
     - name: Build Chrome
       run: |
         npm ci --legacy-peer-deps
         npm run build:chrome
+        zip output/chrome.zip dist/chrome/*
 
-    - name: Dry run Minor version for each master merge
-      id: tagDryRun
+    - name: Create New Tag
+      id: createNewTag
       uses: anothrNick/github-tag-action@1.64.0
       env:
         GITHUB_TOKEN: ${{ secrets.BUNDLE_GIT_TOKEN }}
         WITH_V: true
-        DRY_RUN: true
+        DRY_RUN: false
 
-    - name: New Release Tag
-      run: |
-        echo "The next tag version will be: ${{ steps.tagDryRun.outputs.new_tag }}"
-        echo "LATEST_RELEASE=${{ steps.tagDryRun.outputs.new_tag }}" >> $GITHUB_ENV
+    - name: Release
+      uses: softprops/action-gh-release@v3
+      if: github.event.ref && github.ref == 'refs/heads/main'
+      env:
+        GITHUB_TOKEN: ${{ secrets.BUNDLE_GIT_TOKEN }}
+      with:
+        tag_name: ${{ steps.createNewTag.outputs.new_tag }}
+        files: |
+          output/firefox.zip
+          output/chrome.zip

@@ -2,6 +2,22 @@
 
 ## Installation
 
+Chrome:
+1. Download `chrome.zip` from the latest release
+2. Unzip the files into its own folder
+3. Open up the page `chrome://extensions`
+4. Enable developer mode
+5. Click "load unpacked"
+6. Select the folder
+
+Firefox:
+1. Download `firefox.zip` from the latest release
+2. Unzip the files into its own folder
+3. Open up the page `about:debugging`
+4. Click "This Firefox"
+5. Click "load temporary add on"
+6. Select the folder
+
 ### Build Procedure
 
 1. Check if your [Node.js](https://nodejs.org/) version is >= **18**.
