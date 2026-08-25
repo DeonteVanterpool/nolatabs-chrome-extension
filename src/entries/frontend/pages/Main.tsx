@@ -11,6 +11,7 @@ import {getCurrentlyFocusedRepoId} from 'src/libs/helpers';
 import {Repository} from 'src/models/git';
 import {callbackify} from 'util';
 import {fetchCurrentlyOpenedBranchForRepo} from 'src/libs/db/state';
+import Settings from './Settings/Settings';
 
 interface Props {}
 
@@ -135,12 +136,16 @@ const Main: React.FC<Props> = () => {
         }}
         repoNames={repos.map((r) => r.name)} />
 
+    const [showSettings, setShowSettings] = useState(false);
     return (
         <div className="Main">
             <Sidebar
                 repos={repos}
                 commandPalette={pallete}
                 selectedRepo={selectedRepo}
+                showSettings={() => {
+                    setShowSettings(true);
+                }}
             />
             <div className="content">
                 <h1>{selectedRepo ? selectedRepo.name : "no repo selected"}</h1>
@@ -149,6 +154,11 @@ const Main: React.FC<Props> = () => {
                     <MermaidDiagram chart={chart} className="mermaid_diagram" />
                 </div>
             </div>
+            {showSettings && <div className="settings-modal">
+                <Settings handleSave={() => {
+                    setShowSettings(false);
+                }} />
+            </div>}
         </div>
     );
 };

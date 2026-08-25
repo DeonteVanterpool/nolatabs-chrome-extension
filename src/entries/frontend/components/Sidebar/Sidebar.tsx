@@ -8,9 +8,10 @@ interface Props {
     repos: Repository[];
     commandPalette: React.JSX.Element;
     selectedRepo: Repository | undefined;
+    showSettings: () => void;
 }
 
-const Sidebar: React.FC<Props> = ({repos, commandPalette, selectedRepo}: Props) => {
+const Sidebar: React.FC<Props> = ({repos, commandPalette, selectedRepo, showSettings}: Props) => {
     return <div className="sidebar">
         <Logo className="logo" />
         {commandPalette}
@@ -26,7 +27,7 @@ const Sidebar: React.FC<Props> = ({repos, commandPalette, selectedRepo}: Props) 
             })}
         </ul>
         <div className="bottom">
-            <Button onClick={() => {}} label="Settings" variant="borderless" theme="foreground" />
+            <Button onClick={showSettings} label="Settings" variant="borderless" theme="foreground" />
             <Button onClick={() => {}} label="Log Out" variant="borderless" theme="primary" />
         </div>
     </div>;
