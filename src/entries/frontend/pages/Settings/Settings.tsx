@@ -2,7 +2,7 @@ import React from 'react';
 import './Settings.css';
 import {UserSettings} from 'src/models/user';
 import Button from '../../components/Button/Button';
-import {start_checkout} from 'src/libs/api/client';
+import {signup, start_checkout} from 'src/libs/api/client';
 
 interface Props {
     handleSave: (arg0: UserSettings) => void | Promise<void>;
@@ -35,7 +35,19 @@ const Settings: React.FC<Props> = ({handleSave}: Props) => {
             console.error("Unexpected error:", error);
         }
     }
-    return <div><Button label={"purchase cloudSync"} onClick={handleStartCheckout}></Button><Button label={"purchase SyncCollabroate"} onClick={handleStartCheckoutSyncCollab}></Button></div>
+    const handleSignup = async () => {
+        try {
+            const result = await signup("Deonte Vanterpool", "deonte.vanterpool@outlook.com")
+            if (result.isOk) {
+                console.log("Signed up successfully:", result.value);
+            } else {
+                console.error("Error signing up:", result.error);
+            }
+        } catch (error) {
+            console.error("Unexpected error:", error);
+        }
+    }
+    return <div><Button label={"purchase cloudSync"} onClick={handleStartCheckout}></Button><Button label={"purchase SyncCollabroate"} onClick={handleStartCheckoutSyncCollab}></Button><Button label={"signup"} onClick={handleSignup}></Button></div>
 };
 
 export default Settings;

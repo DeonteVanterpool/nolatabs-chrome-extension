@@ -175,7 +175,7 @@ export async function merge(branchName: string): Promise<Result<Unit, string>> {
 
     const timestamp = new Date();
     const me = await db.fetchMe();
-    const message = `Merge branch '${branchName}' into '${(await db.fetchBranchById(currentlyOpenedBranchId)).map(b => b.name) ?? "unknown"}'`;
+    const message = `Merge branch '${branchName}' into '${(await db.fetchBranchById(currentlyOpenedBranchId)).map(b => b.name).unwrapOr("unknown") ?? "unknown"}'`;
 
     const parents = [currentlyOpenedBranchTip, branchToMergeTip];
 
@@ -368,7 +368,7 @@ export async function checkout(branchName: string): Promise<Result<Unit, string>
         return err(repoIdRes.error);
     }
     const repoId = repoIdRes.value;
-    
+
     console.log(branchName)
     const branchIdRes = await db.fetchBranchIdByName(repoId, branchName);
     if (branchIdRes.isErr) {
@@ -486,17 +486,41 @@ state.getHook()("deleting", function (wid, _obj) {
     }
 });
 
+// Per-window mutex: ensures only one openBranchTabs call is ever in flight
+// for a given window at a time. Without this, two checkouts fired in quick
+// succession race on clearUnpinnedTabs/createTabs, and whichever call's
+// createTabs happens to finish last "wins" — even if it was the older,
+// stale checkout. Chaining onto the previous promise for the same wid
+// forces later calls to wait for earlier ones to fully finish first.
+const windowTabQueues = new Map<number, Promise<void>>();
+
+function withWindowLock(wid: number, task: () => Promise<void>): Promise<void> {
+    const previous = windowTabQueues.get(wid) ?? Promise.resolve();
+    // Swallow errors from the previous task so one failure doesn't
+    // permanently wedge the queue for this window.
+    const next = previous.catch(() => {}).then(task);
+    windowTabQueues.set(wid, next);
+    return next;
+}
+
 const openBranchTabs = async (wid: number, repoId: string, branchId: string) => {
-    const branchTip = await db.readBranchTip(branchId);
-    if (branchTip.isErr) { // empty repo, no tabs need to open
-        throw Error("incorrect branch set for current repo?")
-    }
-    const commitGraph = defaultCommitGraph(await db.readCommits(repoId));
-    const latestSnapshotTabs = branchTip.value ? buildSnapshot(commitGraph, branchTip.value).map((t) => t.url) : []; // if there is no branch tip, then we have no tabs to open because the snapshot is empty
-    console.log("clearing unpinned tabs for windowId: ", wid)
-    await browserWindow.clearUnpinnedTabs(wid);
-    console.log("opening tabs for windowId: ", wid, "repoId: ", repoId, "branchId: ", branchId, "tabs: ", latestSnapshotTabs)
-    await browserWindow.createTabs(wid, latestSnapshotTabs);
+    await withWindowLock(wid, async () => {
+        const branchTip = await db.readBranchTip(branchId);
+        if (branchTip.isErr) { // empty repo, no tabs need to open
+            throw Error("incorrect branch set for current repo?")
+        }
+        const commitGraph = defaultCommitGraph(await db.readCommits(repoId));
+        const latestSnapshotTabs = branchTip.value ? buildSnapshot(commitGraph, branchTip.value).map((t) => t.url) : []; // if there is no branch tip, then we have no tabs to open because the snapshot is empty
+        console.log(latestSnapshotTabs);
+        console.log("clearing unpinned tabs for windowId: ", wid)
+        const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+        await browserWindow.clearUnpinnedTabs(wid);
+        while ((await browserWindow.getUnpinnedTabs(wid)).length !== 0) {
+            await sleep(500)
+        }
+        console.log("opening tabs for windowId: ", wid, "repoId: ", repoId, "branchId: ", branchId, "tabs: ", latestSnapshotTabs)
+        await browserWindow.createTabs(wid, latestSnapshotTabs);
+    });
 }
 
 // open specific branch from repo whenever window state changes

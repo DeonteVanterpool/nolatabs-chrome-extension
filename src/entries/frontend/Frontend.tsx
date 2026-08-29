@@ -1,6 +1,5 @@
 import React, {useEffect, useState} from 'react';
 import {createHashRouter, RouterProvider, Navigate, Outlet, useLocation} from "react-router-dom";
-import {isLoggedIn, hookLogin} from "src/libs/handlers/cryptography";
 import Main from './pages/Main';
 import Welcome from './pages/Welcome/Welcome';
 import Login from './pages/Login/Login';
@@ -30,7 +29,7 @@ const AuthGuard: React.FC = () => {
         const loggedIn = await chrome.runtime.sendMessage(
             {kind: "checkLoggedIn"} satisfies CheckLoggedIn
         );
-        return loggedIn;
+        return loggedIn.loggedIn;
     };
 
     const checkWelcomeStatus = async () => {

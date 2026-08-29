@@ -28,7 +28,11 @@ const Sidebar: React.FC<Props> = ({repos, commandPalette, selectedRepo, showSett
         </ul>
         <div className="bottom">
             <Button onClick={showSettings} label="Settings" variant="borderless" theme="foreground" />
-            <Button onClick={() => {}} label="Log Out" variant="borderless" theme="primary" />
+            <Button onClick={() => {
+                console.log("sending logout message")
+                chrome.runtime.sendMessage({kind: "logout"});
+                console.log("sent")
+            }} label="Log Out" variant="borderless" theme="primary" />
         </div>
     </div>;
 };

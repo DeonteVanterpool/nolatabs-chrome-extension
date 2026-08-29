@@ -1,4 +1,4 @@
-import {get_public_key, sign, argon2_verify_password, argon2_set_password, logged_in, aes_encrypt, aes_decrypt, Packet, set_master_key, aes_encrypt_kek, aes_decrypt_kek} from 'src/wasm/crypto/pkg/crypto.js';
+import {log_out, get_public_key, sign, argon2_verify_password, argon2_set_password, logged_in, aes_encrypt, aes_decrypt, Packet, set_master_key, aes_encrypt_kek, aes_decrypt_kek} from 'src/wasm/crypto/pkg/crypto.js';
 
 const decoder = new TextDecoder();
 const encoder = new TextEncoder();
@@ -59,6 +59,12 @@ export async function isLoggedIn() {
     console.log(logged_in())
     await chrome.storage.session.set({"masterKey": "set"})
     return logged_in();
+}
+
+export async function logOut() {
+    console.log("logged out");
+    console.log(isLoggedIn());
+    return log_out();
 }
 
 export async function passwordVerify(password: Uint8Array, against: Uint8Array, salt: Uint8Array): Promise<boolean> {

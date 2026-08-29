@@ -90,7 +90,7 @@ const router = async (message: Message) => {
             case "checkLoggedIn":
                 const logged = await crypto.isLoggedIn();
                 console.log("crypto.isLoggedIn(): " + logged)
-                response = {success: logged};
+                response = {success: logged, loggedIn: logged};
                 break;
             case "welcome":
                 console.log("Received welcome message: ", message);
@@ -134,6 +134,11 @@ const router = async (message: Message) => {
                 } else {
                     response = {success: false, error: diagram.error}
                 }
+                break
+            case "logout":
+                await crypto.logOut();
+                await chrome.runtime.sendMessage({ kind: "hookLoggedIn" })
+                response = {success: true, loggedIn: false};
                 break
             default:
                 response = {success: false, error: "unrecognized message: " + message.kind} as Response;

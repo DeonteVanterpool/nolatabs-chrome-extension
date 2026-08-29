@@ -91,6 +91,11 @@ pub fn logged_in() -> bool {
 }
 
 #[wasm_bindgen]
+pub fn log_out() -> () {
+    unsafe { AES_CIPHER = None; }
+}
+
+#[wasm_bindgen]
 pub fn clear_master_key() {
     unsafe {
         MASTER_KEY_BUF.zeroize();
