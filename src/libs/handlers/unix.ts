@@ -504,6 +504,7 @@ function withWindowLock(wid: number, task: () => Promise<void>): Promise<void> {
 }
 
 const openBranchTabs = async (wid: number, repoId: string, branchId: string) => {
+    console.log("running updated version")
     await withWindowLock(wid, async () => {
         const branchTip = await db.readBranchTip(branchId);
         if (branchTip.isErr) { // empty repo, no tabs need to open

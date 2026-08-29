@@ -66,33 +66,20 @@ async function normalizeWindowId(windowId: number | null): Promise<number> {
 
 export async function updateWindowStateForRepo(windowId: number | null, sessionId: string | null, repoId: string, branchId: string) {
     await db.transaction("rw", [db.state], async () => {
-        const prev = await db.state.get(windowId);
-        if (prev) {
-            const normalizedWindowId = await normalizeWindowId(null);
-            const alreadyExists = await db.state.get(normalizedWindowId);
-            if (alreadyExists) {
-                throw new Error(`Window state already exists for normalized windowId: ${normalizedWindowId}. Cannot update to this windowId.`);
-            }
-            console.log(`Window state already exists for windowId: ${windowId}. Updating to new windowId: ${normalizedWindowId} and clearing sessionId.`);
-            await db.state.delete(windowId);
-            console.log(`Deleted previous window state for windowId: ${windowId}. Now adding...`);
-            await db.state.add({
-                ...prev,
-                windowId: normalizedWindowId,
-                sessionId: null,
-            });
-        }
         const normalized = await normalizeWindowId(windowId);
-        console.log(`Updating window state for repoId: ${repoId}, branchId: ${branchId}, windowId: ${windowId}, normalized: ${normalized} sessionId: ${sessionId}`);
-        const alreadyExists = await db.state.get(normalized);
-        if (alreadyExists) {
-            throw new Error(`Window state already exists for normalized windowId: ${normalized}. See additinoal context: wid: ${alreadyExists.windowId}, repoId: ${alreadyExists.repoId}`)
-        }
-        const modified = await db.state.where("repoId").equals(repoId).delete()
-        await createWindowStateForRepo(normalized, sessionId, repoId, branchId)
-        console.log("updated")
-        if (!modified || modified > 1) {
-            throw new Error("no open window state for given repo, or multiple deletions")
+
+        // If this window was previously attached to a *different* repo,
+        // that row is now stale — remove it so we don't leave orphaned state.
+        await db.state.delete(normalized);
+
+        // Enforce "one window per repo": if some other window was
+        // previously attached to this repo, that mapping is now stale too.
+        const modified = await db.state.where("repoId").equals(repoId).delete();
+
+        await createWindowStateForRepo(normalized, sessionId, repoId, branchId);
+
+        if (modified > 1) {
+            throw new Error("multiple windows were attached to the same repo");
         }
     });
 }
