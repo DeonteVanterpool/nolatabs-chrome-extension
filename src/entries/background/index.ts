@@ -6,12 +6,10 @@ import {openWelcomePage} from "src/libs/handlers/welcome";
 import {fetchMe} from "src/libs/db/storage";
 import * as crypto from "src/libs/handlers/cryptography";
 import {authenticate} from "src/libs/handlers/local_auth";
-import init from 'src/wasm/crypto/pkg/crypto.js';
-
-let url = chrome.runtime.getURL("crypto_bg.wasm");
+import {signup} from "src/libs/api/client";
 
 // we do this to allow the master key to stay in memory for the duration of the entire session. The alternative would be to store in chrome session storage, which means we have to make copy of the master key whenever we need to use it
-const keepAlive = () => setInterval(chrome.runtime.getPlatformInfo, 20e3);
+const keepAlive = () => {setInterval(chrome.runtime.getPlatformInfo, 20e3); openWelcomePage(); console.log("kept alive")};
 chrome.runtime.onStartup.addListener(keepAlive);
 keepAlive();
 
@@ -25,6 +23,10 @@ chrome.windows.onCreated.addListener(async (window) => {
     if (window.type === "normal") { // don't open the page if the new window is a popup
         await openWelcomePage();
     }
+});
+
+chrome.runtime.onConnect.addListener(async (_port) => {
+    await openWelcomePage();
 });
 
 let messageQueue: Promise<any> = Promise.resolve(); // queue to ensure that messages are processed sequentially, to avoid race conditions
@@ -137,8 +139,17 @@ const router = async (message: Message) => {
                 break
             case "logout":
                 await crypto.logOut();
-                await chrome.runtime.sendMessage({ kind: "hookLoggedIn" })
+                await chrome.runtime.sendMessage({kind: "hookLoggedIn"})
                 response = {success: true, loggedIn: false};
+                break
+            case "cloudsignup":
+                crypto.initialize(await crypto.sha2Hash(new Uint8Array(crypto.encode(message.email))))
+                const result = await signup(message.username, message.email)
+                if (result.isOk) {
+                    response = {success: true, res: result.value}
+                } else {
+                    response = {success: false, error: result.error}
+                }
                 break
             default:
                 response = {success: false, error: "unrecognized message: " + message.kind} as Response;

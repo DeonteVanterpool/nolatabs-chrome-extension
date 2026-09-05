@@ -1,4 +1,4 @@
-import {log_out, get_public_key, sign, argon2_verify_password, argon2_set_password, logged_in, aes_encrypt, aes_decrypt, Packet, set_master_key, aes_encrypt_kek, aes_decrypt_kek} from 'src/wasm/crypto/pkg/crypto.js';
+import {log_out, get_public_key, sign, argon2_verify_password, argon2_set_password, logged_in, aes_encrypt, aes_decrypt, Packet, set_master_key, aes_encrypt_kek, aes_decrypt_kek, init} from 'src/wasm/crypto/pkg/crypto.js';
 
 const decoder = new TextDecoder();
 const encoder = new TextEncoder();
@@ -117,10 +117,20 @@ export function base64ToUint8Array(base64: string): Uint8Array {
     return bytes;
 }
 
-export function public_key(): string {
-    return decode(get_public_key());
+export function public_key(): Uint8Array {
+    return get_public_key();
 }
 
-export function sign_message(data: Uint8Array): string {
-    return decode(sign(data));
+export function sign_message(data: Uint8Array): Uint8Array {
+    return sign(data);
+}
+
+export function uint8ArrayToHex(arr: Uint8Array): string {
+    return Array.from(arr, function (byte) {
+        return ('0' + (byte & 0xFF).toString(16)).slice(-2);
+    }).join('')
+}
+
+export function initialize(identity: Uint8Array) {
+    return init(identity);
 }

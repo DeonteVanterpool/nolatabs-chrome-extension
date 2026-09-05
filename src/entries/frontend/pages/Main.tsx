@@ -144,7 +144,7 @@ const Main: React.FC<Props> = () => {
                 commandPalette={pallete}
                 selectedRepo={selectedRepo}
                 showSettings={() => {
-                    setShowSettings(true);
+                    setShowSettings(!showSettings);
                 }}
             />
             <div className="content">

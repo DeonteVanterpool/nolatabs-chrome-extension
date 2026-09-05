@@ -171,13 +171,17 @@ export async function merge(branchName: string): Promise<Result<Unit, string>> {
 
     const mergedTabs = [...new Set([...currentlyOpenedBranchSnapshot, ...branchToMergeSnapshot])];
 
+    console.log("merged tabs:", mergedTabs)
+
     const mergedTabsDiff = calculateDifference([currentlyOpenedBranchTip, branchToMergeTip], mergedTabs, snapshotReader);
 
+    console.log("merged tabs diff:", mergedTabsDiff)
     const timestamp = new Date();
     const me = await db.fetchMe();
     const message = `Merge branch '${branchName}' into '${(await db.fetchBranchById(currentlyOpenedBranchId)).map(b => b.name).unwrapOr("unknown") ?? "unknown"}'`;
 
     const parents = [currentlyOpenedBranchTip, branchToMergeTip];
+    console.log("parents", parents)
 
     const hashInput = new CommitHashInput(me.id, message, timestamp, mergedTabs, parents);
     console.log("hash: ", hashInput.stringify())
@@ -185,6 +189,8 @@ export async function merge(branchName: string): Promise<Result<Unit, string>> {
 
     // create the commit
     const newCommit = createCommit(crypto.decode(hash), me.id, timestamp, message, mergedTabsDiff, parents);
+
+    console.log("commit", newCommit);
 
     // update storage
     await db.saveCommitAndUpdateBranch(repoId, newCommit, currentlyOpenedBranchId);

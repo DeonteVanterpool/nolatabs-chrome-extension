@@ -1,4 +1,4 @@
-export type Message = Command | WelcomeMessage | CheckWelcomeStatusMessage | CloudLoginMessage | LocalLoginMessage | CheckLoggedIn | RenderMermaidMessage | LogOutMessage;
+export type Message = Command | WelcomeMessage | CheckWelcomeStatusMessage | CloudLoginMessage | LocalLoginMessage | CheckLoggedIn | RenderMermaidMessage | LogOutMessage | CloudSignupMessage;
 
 export interface Command {
     kind: "command",
@@ -20,6 +20,12 @@ export interface CloudLoginMessage {
     kind: "cloudlogin",
     email: string,
     passwordHash: string,
+};
+
+export interface CloudSignupMessage {
+    kind: "cloudsignup",
+    username: string,
+    email: string,
 };
 
 export interface LocalLoginMessage {

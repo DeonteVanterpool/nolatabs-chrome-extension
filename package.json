@@ -9,8 +9,8 @@
   },
   "devContentSecurityPolicy": "script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval'",
   "scripts": {
-    "build:chrome": "wasm-pack build src/wasm/crypto --target bundler && cross-env NODE_ENV=production TARGET_BROWSER=chrome webpack",
-    "build:firefox": "wasm-pack build src/wasm/crypto --target bundler && cross-env NODE_ENV=production TARGET_BROWSER=firefox webpack",
+    "build:chrome": "($DISABLE_WASM_BUILD || wasm-pack build src/wasm/crypto --target bundler) && cross-env NODE_ENV=production TARGET_BROWSER=chrome webpack",
+    "build:firefox": "($DISABLE_WASM_BUILD || wasm-pack build src/wasm/crypto --target bundler) && cross-env NODE_ENV=production TARGET_BROWSER=firefox webpack",
     "build:all": "$npm_execpath run build:chrome && $npm_execpath run build:firefox",
     "start:chrome": "cross-env TARGET_BROWSER=chrome node utils/webserver.js",
     "start:firefox": "cross-env TARGET_BROWSER=firefox node utils/webserver.js",

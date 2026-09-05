@@ -87,6 +87,7 @@ pub fn load_storage(
 }
 
 /// returns public key
+#[wasm_bindgen]
 pub fn init(identity: &[u8]) -> Result<Vec<u8>, JsError> {
     default_provider()?;
 

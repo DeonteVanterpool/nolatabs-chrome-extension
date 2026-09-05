@@ -3,6 +3,7 @@ import './Settings.css';
 import {UserSettings} from 'src/models/user';
 import Button from '../../components/Button/Button';
 import {signup, start_checkout} from 'src/libs/api/client';
+import {CloudSignupMessage} from 'src/models/messages';
 
 interface Props {
     handleSave: (arg0: UserSettings) => void | Promise<void>;
@@ -37,17 +38,13 @@ const Settings: React.FC<Props> = ({handleSave}: Props) => {
     }
     const handleSignup = async () => {
         try {
-            const result = await signup("Deonte Vanterpool", "deonte.vanterpool@outlook.com")
-            if (result.isOk) {
-                console.log("Signed up successfully:", result.value);
-            } else {
-                console.error("Error signing up:", result.error);
-            }
+            const result = await chrome.runtime.sendMessage({ kind: "cloudsignup", email: "deonte.vanterpool@outlook.com", username: "Deonte Vanterpool" } satisfies CloudSignupMessage)
+            console.log(result);
         } catch (error) {
             console.error("Unexpected error:", error);
         }
     }
-    return <div><Button label={"purchase cloudSync"} onClick={handleStartCheckout}></Button><Button label={"purchase SyncCollabroate"} onClick={handleStartCheckoutSyncCollab}></Button><Button label={"signup"} onClick={handleSignup}></Button></div>
+    return <div className="settings"><Button label={"purchase cloudSync"} onClick={handleStartCheckout}></Button><Button label={"purchase SyncCollabroate"} onClick={handleStartCheckoutSyncCollab}></Button><Button label={"signup"} onClick={handleSignup}></Button></div>
 };
 
 export default Settings;
