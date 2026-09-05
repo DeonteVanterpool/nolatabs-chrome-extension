@@ -46,6 +46,7 @@ interface Commit {
     author: string,
     timestamp: number,
     message: string,
+    branch: string,
 }
 
 interface CommitParent {
@@ -125,7 +126,7 @@ export const readCommits = async (repoId: string) => await db.transaction('r', [
             additions: await Promise.all(additions.map(async (a) => {return {tab: (await db.tabs.get(a.tabId))!, after: a.after} satisfies git.Addition})),
             deletions: deletions.map((d) => {return {index: d.index}})
         }) satisfies (git.Diff);
-        return ({hash: c.hash, author: c.author, timestamp: new Date(c.timestamp), message: c.message, diff: diff, parents: parents.map(cp => cp.parentId)} satisfies git.Commit);
+        return ({hash: c.hash, author: c.author, timestamp: new Date(c.timestamp), message: c.message, diff: diff, parents: parents.map(cp => cp.parentId), branch: c.branch} satisfies git.Commit);
     }));
 });
 
@@ -146,7 +147,7 @@ export const readRepoFromCommitHash = async (commitHash: string): Promise<Repo |
 }
 
 export const createCommit = async (repoId: string, commit: git.Commit) => await db.transaction('rw', [db.commits, db.additions, db.deletions, db.commitsParents, db.tabs], async () => {
-    await db.commits.add({hash: commit.hash, repoId: repoId, author: commit.author, timestamp: commit.timestamp.getTime(), message: commit.message});
+    await db.commits.add({ hash: commit.hash, repoId: repoId, author: commit.author, timestamp: commit.timestamp.getTime(), message: commit.message, branch: commit.branch });
     await Promise.all(commit.diff.additions.map(async (a) => {
         let tabId = await db.tabs.add(a.tab);
         await db.additions.add({commitId: commit.hash, tabId: tabId, after: a.after});

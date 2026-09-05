@@ -9,7 +9,7 @@ import {authenticate} from "src/libs/handlers/local_auth";
 import {signup} from "src/libs/api/client";
 
 // we do this to allow the master key to stay in memory for the duration of the entire session. The alternative would be to store in chrome session storage, which means we have to make copy of the master key whenever we need to use it
-const keepAlive = () => {setInterval(chrome.runtime.getPlatformInfo, 20e3); openWelcomePage(); console.log("kept alive")};
+const keepAlive = () => {setInterval(chrome.runtime.getPlatformInfo, 20e3); console.log("kept alive")};
 chrome.runtime.onStartup.addListener(keepAlive);
 keepAlive();
 
@@ -24,6 +24,12 @@ chrome.windows.onCreated.addListener(async (window) => {
         await openWelcomePage();
     }
 });
+
+chrome.windows.onFocusChanged.addListener(async (windowId) => {
+    if ((await chrome.windows.get(windowId)).type === "normal") {
+        await openWelcomePage();
+    }
+})
 
 chrome.runtime.onConnect.addListener(async (_port) => {
     await openWelcomePage();

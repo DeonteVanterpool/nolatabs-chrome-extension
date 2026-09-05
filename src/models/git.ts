@@ -5,6 +5,7 @@ export type Commit = {
     readonly message: string;
     readonly diff: Diff;
     readonly parents: string[]; // hash of parent commit, empty if no parent (initial commit)
+    readonly branch: string;
 }
 
 export type Diff = {

@@ -16,9 +16,9 @@ export function defaultCommitGraph(commits: Commit[]): CommitGraph {
     }
 }
 
-export function createCommit(hash: string, author: string, timestamp: Date, message: string, difference: Diff, parents: string[]): Commit {
+export function createCommit(hash: string, author: string, timestamp: Date, message: string, difference: Diff, parents: string[], branch: string): Commit {
 
-    let commit = {hash, author, timestamp, message, diff: difference, parents};
+    let commit = {hash, author, timestamp, message, diff: difference, parents, branch};
 
     return commit;
 }
@@ -327,219 +327,49 @@ export function createBranch(id: string, name: string, repoId: string): Branch {
     } satisfies Branch;
 }
 
-function commitBelongsToBranch(commitHash: string, branchTipHash: string, commitReader: CommitGraph): boolean {
-    let currentCommitHash = branchTipHash;
-    while (currentCommitHash) {
-        if (currentCommitHash === commitHash) {
-            return true;
-        }
-        let currentCommit = commitReader(currentCommitHash);
-        if (!currentCommit) {
-            throw new Error(`Commit ${currentCommitHash} not found`);
-        }
-        if (currentCommit.parents.length === 0) {
-            break; // reached the root commit
-        }
-        currentCommitHash = currentCommit.parents[0]; // follow the first parent
-    }
-    return false;
-}
-
-// Assigns each commit to the single branch that "owns" it, based on
-// structural distance (hops along first-parent history) from each branch's
-// own tip — not on which branch is currently being viewed. This guarantees
-// the same underlying commit graph renders identically no matter whose tip
-// you pass in as `tip`; only cosmetic ordering (declaration order / colors)
-// should ever depend on currentTipBranch, never actual topology.
-function computeLaneOwners(
-    commitReader: CommitGraph,
-    branchTips: Map<string, string>,
-    currentTipBranch: string
-): Map<string, string> {
-    const best = new Map<string, { branch: string; dist: number }>();
-
-    for (const [branchName, tipHash] of branchTips) {
-        let cur: string | undefined = tipHash;
-        let dist = 0;
-        const seen = new Set<string>();
-        while (cur && !seen.has(cur)) {
-            seen.add(cur);
-
-            const existing = best.get(cur);
-            const isCloser = !existing || dist < existing.dist;
-            // Only a true tie (identical distance — i.e. two branches
-            // literally pointing at the same commit) falls back to the
-            // cosmetic currentTipBranch preference. This never happens for
-            // ordinary ancestor/descendant relationships.
-            const isTieBreak =
-                existing &&
-                dist === existing.dist &&
-                branchName === currentTipBranch &&
-                existing.branch !== currentTipBranch;
-
-            if (isCloser || isTieBreak) {
-                best.set(cur, { branch: branchName, dist });
-            }
-
-            const c = commitReader(cur);
-            if (!c || c.parents.length === 0) break;
-            cur = c.parents[0];
-            dist++;
-        }
-    }
-
-    const owner = new Map<string, string>();
-    for (const [hash, { branch }] of best) owner.set(hash, branch);
-    return owner;
-}
-
 export function renderMermaid(
     commitReader: CommitGraph,
     tip: string,
-    branchTips: Map<string, string>
 ): string {
-    const currentTipBranch =
-        Array.from(branchTips.entries()).find(([, t]) => t === tip)?.[0] ?? "main";
-
-    const laneOwner = computeLaneOwners(commitReader, branchTips, currentTipBranch);
-
-    // The branch that owns the very first (parentless) commit is Mermaid's
-    // implicit initial branch. We tell Mermaid its real name via the init
-    // directive instead of assuming it's literally called "main" — that
-    // assumption breaks the moment a repo's default branch has any other name.
-    let rootBranchName = currentTipBranch;
-    for (const [hash, branch] of laneOwner) {
-        const c = commitReader(hash);
-        if (c && c.parents.length === 0) {
-            rootBranchName = branch;
-            break;
-        }
-    }
-
-    const lines: string[] = [
-        `%%{init: {'gitGraph': {'mainBranchName': '${rootBranchName}'}}}%%`,
-        "gitGraph BT:",
-    ];
-
-    const esc = (s: string) => s.replace(/"/g, '\\"');
-    const tagFor = (hash: string) => {
-        const c = commitReader(hash);
-        const msg = String(c?.message ?? "").split("\n")[0].trim();
-        return msg ? ` tag: "${esc(msg)}"` : "";
-    };
-
-    const declaredBranches = new Set<string>([rootBranchName]);
-    let currentBranch = rootBranchName;
-
-    const liveHead = new Map<string, string>();
-    liveHead.set(rootBranchName, "__root__");
-
-    const hasRealCommit = (branch: string) => {
-        const h = liveHead.get(branch);
-        return !!h && h !== "__root__";
-    };
-
-    const ensureBranch = (branch: string) => {
-        if (branch === rootBranchName) return;
-        if (!declaredBranches.has(branch)) {
-            lines.push(`branch ${branch}`);
-            declaredBranches.add(branch);
-            liveHead.set(branch, liveHead.get(currentBranch) ?? "__root__");
-        }
-    };
-
-    const checkoutIfNeeded = (branch: string) => {
-        ensureBranch(branch);
-        if (currentBranch !== branch) {
-            lines.push(`checkout ${branch}`);
-            currentBranch = branch;
-        }
-    };
-
-    const emittedNodes = new Set<string>();
-    const visited = new Set<string>();
-
-    const emitCommit = (hash: string) => {
-        if (emittedNodes.has(hash)) return;
-        const id = bytesToHex(hash);
-        lines.push(`commit id: "${id}"${tagFor(hash)}`);
-        emittedNodes.add(hash);
-        liveHead.set(currentBranch, id);
-    };
-
-    // Commits only reachable through a merge's second parent, whose own
-    // branch tip isn't in `branchTips` (e.g. the branch was deleted after
-    // merging), never get an owner from computeLaneOwners. Give them a
-    // synthetic lane instead of mis-attributing them to whatever branch is
-    // currently checked out, or silently dropping the merge.
-    let orphanCounter = 0;
-    const resolveOwner = (hash: string): string => {
-        const existing = laneOwner.get(hash);
-        if (existing) return existing;
-
-        const syntheticName = `deleted-branch-${++orphanCounter}`;
-        let cur: string | undefined = hash;
-        while (cur && !laneOwner.has(cur)) {
-            laneOwner.set(cur, syntheticName);
-            const c = commitReader(cur);
-            if (!c || c.parents.length === 0) break;
-            cur = c.parents[0];
-        }
-        return syntheticName;
-    };
-
-    const walk = (hash: string | undefined) => {
-        if (!hash || visited.has(hash)) return;
-        visited.add(hash);
-
-        const commit = commitReader(hash);
-        if (!commit) return;
-
-        const destinationBranch = resolveOwner(hash);
-        checkoutIfNeeded(destinationBranch);
-
-        if (commit.parents.length > 0) {
-            walk(commit.parents[0]);
-        }
-
-        const isMergeCommit = commit.parents.length > 1;
-
-        if (!isMergeCommit) {
-            emitCommit(hash);
+    let result = "gitGraph BT:\n"
+    let branches = ["main"]
+    let commitsSorted: Commit[] = [];
+    let visited: Set<string> = new Set();
+    let rec = (curr: string) => {
+        let commit = commitReader(curr);
+        if (!visited.has(commit.hash)) {
+            commitsSorted.push(commit);
+            visited.add(commit.hash);
+        } else {
             return;
         }
-
-        const parentHash = commit.parents[1];
-        walk(parentHash);
-
-        const sourceBranch = resolveOwner(parentHash);
-        if (sourceBranch === destinationBranch) return;
-
-        checkoutIfNeeded(destinationBranch);
-        if (currentBranch !== destinationBranch) return;
-        if (!hasRealCommit(sourceBranch)) return;
-
-        const srcLive = liveHead.get(sourceBranch);
-        const dstLive = liveHead.get(destinationBranch);
-        if (srcLive && dstLive && srcLive === dstLive) return;
-
-        const mergeId = bytesToHex(hash);
-        lines.push(`merge ${sourceBranch} id: "${mergeId}"${tagFor(hash)}`);
-        emittedNodes.add(hash);
-        liveHead.set(destinationBranch, mergeId);
-    };
-
-    const orderedTips = Array.from(branchTips.entries()).sort(([a], [b]) => {
-        if (a === currentTipBranch && b !== currentTipBranch) return -1;
-        if (b === currentTipBranch && a !== currentTipBranch) return 1;
-        return a.localeCompare(b);
-    });
-
-    for (const [, tipHash] of orderedTips) {
-        walk(tipHash);
+        commit.parents.forEach(p => rec(p));
     }
-
-    return lines.join("\n");
+    rec(tip);
+    commitsSorted.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+    const emit = (commit: Commit) => {
+        if (!branches.includes(commit.branch)) {
+            result += `branch ${commit.branch}\n`
+            branches.push(commit.branch);
+        }
+        result += `checkout ${commit.branch}\n`
+        if (commit.parents.length > 1) {
+            commit.parents.forEach((p) => {
+                let parent = commitReader(p);
+                if (parent.branch === commit.branch) {
+                    return; // no need to merge onto self
+                } else {
+                    result += `merge ${parent.branch} id: "${bytesToHex(commit.hash)}" tag: "${commit.message.replaceAll('"', '\\"')}"\n`
+                }
+            })
+        } else {
+            result += `commit id: "${bytesToHex(commit.hash)}" tag: "${commit.message.replaceAll('"', '\\"')}"\n`
+        }
+    }
+    for (let commit of commitsSorted) {
+        emit(commit);
+    }
+    return result;
 }
 
 function bytesToHex(data: string): string {

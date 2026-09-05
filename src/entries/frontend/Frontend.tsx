@@ -26,9 +26,19 @@ const AuthGuard: React.FC = () => {
 
 
     const checkLoggedIn = async () => {
-        const loggedIn = await chrome.runtime.sendMessage(
+        let loggedIn = await chrome.runtime.sendMessage(
             {kind: "checkLoggedIn"} satisfies CheckLoggedIn
         );
+        if (loggedIn === undefined) {
+            setTimeout(async () => {
+                loggedIn = await chrome.runtime.sendMessage(
+                    {kind: "checkLoggedIn"} satisfies CheckLoggedIn
+                );
+            }, 200);
+            if (loggedIn === undefined) {
+                return false;
+            }
+        }
         return loggedIn.loggedIn;
     };
 

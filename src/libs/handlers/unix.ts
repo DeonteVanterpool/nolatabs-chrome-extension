@@ -58,10 +58,14 @@ export async function handleCommit(args: string[]): Promise<Result<Commit, strin
     console.log("hash: ", hashInput.stringify())
     const hash = await crypto.sha2Hash(crypto.encode(hashInput.stringify()) as Uint8Array<ArrayBuffer>);
 
+    const branch = await db.fetchBranchById(currentlyOpenedBranchId);
+    if (branch.isErr) {
+        return err(branch.error)
+    }
     // create the commit
     const snapshotReader = (hash: string) => buildSnapshot(commitGraph, hash)
     const difference = calculateDifference(parents, tabs, snapshotReader);
-    const newCommit = createCommit(crypto.decode(hash), me.id, timestamp, message, difference, parents);
+    const newCommit = createCommit(crypto.decode(hash), me.id, timestamp, message, difference, parents, branch.value.name);
 
     // update storage
     await db.saveCommitAndUpdateBranch(repoId.value, newCommit, currentlyOpenedBranchId);
@@ -187,8 +191,12 @@ export async function merge(branchName: string): Promise<Result<Unit, string>> {
     console.log("hash: ", hashInput.stringify())
     const hash = await crypto.sha2Hash(crypto.encode(hashInput.stringify()) as Uint8Array<ArrayBuffer>);
 
+    const branch = await db.fetchBranchById(currentlyOpenedBranchId);
+    if (branch.isErr) {
+        return err(branch.error)
+    }
     // create the commit
-    const newCommit = createCommit(crypto.decode(hash), me.id, timestamp, message, mergedTabsDiff, parents);
+    const newCommit = createCommit(crypto.decode(hash), me.id, timestamp, message, mergedTabsDiff, parents, branch.value.name);
 
     console.log("commit", newCommit);
 
@@ -477,7 +485,7 @@ export async function renderGraph(): Promise<Result<string, string>> {
             branchTips.set(branch.name, branch.tipHash);
         }
     }
-    const mermaid = git.renderMermaid(commitGraph, tip.value, branchTips);
+    const mermaid = git.renderMermaid(commitGraph, tip.value);
     return ok(mermaid);
 }
 
