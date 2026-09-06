@@ -178,12 +178,10 @@ chrome.runtime.onMessage.addListener((message: Message, sender, sendResponse): b
     console.log("Received message: ", message);
     const isFirefox = typeof browser !== 'undefined';
     if (isFirefox) {
-        // Firefox: return a Promise directly
         return (async () => {
             return await router(message);
         })();
     } else {
-        // Chrome: use callback-based approach
         messageQueue = messageQueue.then(async () => {
             const response = await router(message);
             sendResponse(response)

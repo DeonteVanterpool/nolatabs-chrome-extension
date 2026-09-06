@@ -471,7 +471,7 @@ export async function renderGraph(): Promise<Result<string, string>> {
     if (tip.isErr) return err(tip.error);
 
     if (!tip.value) {
-        return ok(`gitGraph TB\ncommit id: "empty"`);
+        return ok(`empty graph`);
     }
 
     const commits = await db.readCommits(repoId);

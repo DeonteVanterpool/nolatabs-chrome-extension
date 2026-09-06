@@ -34,6 +34,14 @@ const Main: React.FC<Props> = () => {
         }
     }
 
+    function isValidChart(chart: string): boolean {
+        if (!chart) return false;
+        const trimmed = chart.trim();
+        if (trimmed.length === 0) return false;
+        if (trimmed.toLowerCase().startsWith("gitgraph") && trimmed.includes("commit"))  return true; // default/fallback output
+        return false;
+    }
+
     const callBack = (message: any) => {
         if (message.kind === "hookCommandExecuted" || message === "init") {
             console.log("command executed")
@@ -64,7 +72,7 @@ const Main: React.FC<Props> = () => {
                 chrome.runtime.sendMessage({kind: "rendermermaid"} satisfies RenderMermaidMessage).then((mermaidResult: {success: boolean, error?: string, diagram?: string}) => {
                     if (mermaidResult.success) {
                         chart = mermaidResult.diagram!
-                        setChart(mermaidResult.diagram!)
+                        mermaidResult.diagram!.includes("commit") ? setChart(mermaidResult.diagram!) : setChart("")
                     } else {
                         chart = "Could not render commit graph for some reason"
                         setChart("Could not render commit graph for some reason")
@@ -152,7 +160,7 @@ const Main: React.FC<Props> = () => {
                 <h1>{selectedRepo ? selectedRepo.name : "no repo selected"}</h1>
                 <span><h2>{selectedBranch ? selectedBranch : "no branch selected"}</h2> | {availableBranches.length > 0 ? availableBranches.filter((b) => b !== selectedBranch).join(" ") : "no branches available"}</span>
                 <div className="repo-content">
-                    <MermaidDiagram chart={chart} className="mermaid_diagram" />
+                    {isValidChart(chart) ? (<MermaidDiagram chart={chart} className="mermaid_diagram" />) : (chart)}
                 </div>
             </div>
             {showSettings && <div className="settings-modal">
