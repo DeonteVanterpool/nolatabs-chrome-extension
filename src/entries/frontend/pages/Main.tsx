@@ -34,44 +34,45 @@ const Main: React.FC<Props> = () => {
         }
     }
 
-    const callBack = async (message: any) => {
+    const callBack = (message: any) => {
         if (message.kind === "hookCommandExecuted" || message === "init") {
             console.log("command executed")
-            await fetchRepos();
-            console.log(repos);
-            getCurrentlyFocusedRepoId().then((result) => {
-                console.log("repo id: ", result);
-                if (result.isOk) {
-                    const repo = repos.find((r) => r.id === result.value);
-                    navigate(`/?repo-id=${result.value}`);
-                    db.fetchBranchesForRepo(result.value).then((branches) => {
-                        if (branches.isOk) {
-                            setAvailableBranches(branches.value.map((b) => b.name));
-                        }
-                    })
-                    setSelectedRepo(repo);
-                    fetchCurrentlyOpenedBranchForRepo(result.value).then((branchResult) => {
-                        db.fetchBranchById(branchResult).then((branch) => {
-                            if (branch.isOk) {
-                                setSelectedBranch(branch.value.name);
+            fetchRepos().then(() => {
+                console.log(repos);
+                getCurrentlyFocusedRepoId().then((result) => {
+                    console.log("repo id: ", result);
+                    if (result.isOk) {
+                        const repo = repos.find((r) => r.id === result.value);
+                        navigate(`/?repo-id=${result.value}`);
+                        db.fetchBranchesForRepo(result.value).then((branches) => {
+                            if (branches.isOk) {
+                                setAvailableBranches(branches.value.map((b) => b.name));
                             }
                         })
-                    })
-                    console.log(repos);
-                    console.log("found: ", repos.find((r) => r.id === result.value));
-                }
+                        setSelectedRepo(repo);
+                        fetchCurrentlyOpenedBranchForRepo(result.value).then((branchResult) => {
+                            db.fetchBranchById(branchResult).then((branch) => {
+                                if (branch.isOk) {
+                                    setSelectedBranch(branch.value.name);
+                                }
+                            })
+                        })
+                        console.log(repos);
+                        console.log("found: ", repos.find((r) => r.id === result.value));
+                    }
+                });
+                chrome.runtime.sendMessage({kind: "rendermermaid"} satisfies RenderMermaidMessage).then((mermaidResult: {success: boolean, error?: string, diagram?: string}) => {
+                    if (mermaidResult.success) {
+                        chart = mermaidResult.diagram!
+                        setChart(mermaidResult.diagram!)
+                    } else {
+                        chart = "Could not render commit graph for some reason"
+                        setChart("Could not render commit graph for some reason")
+                        console.log(mermaidResult.error)
+                    }
+                });
+                console.log("chart: ", chart)
             });
-            chrome.runtime.sendMessage({kind: "rendermermaid"} satisfies RenderMermaidMessage).then((mermaidResult: {success: boolean, error?: string, diagram?: string}) => {
-                if (mermaidResult.success) {
-                    chart = mermaidResult.diagram!
-                    setChart(mermaidResult.diagram!)
-                } else {
-                    chart = "Could not render commit graph for some reason"
-                    setChart("Could not render commit graph for some reason")
-                    console.log(mermaidResult.error)
-                }
-            });
-            console.log("chart: ", chart)
         }
     }
     useEffect(() => {

@@ -25,21 +25,14 @@ const AuthGuard: React.FC = () => {
     }>({isWelcomed: false, isLoggedIn: false, isLoading: true});
 
 
-    const checkLoggedIn = async () => {
-        let loggedIn = await chrome.runtime.sendMessage(
-            {kind: "checkLoggedIn"} satisfies CheckLoggedIn
-        );
-        if (loggedIn === undefined) {
-            setTimeout(async () => {
-                loggedIn = await chrome.runtime.sendMessage(
-                    {kind: "checkLoggedIn"} satisfies CheckLoggedIn
-                );
-            }, 200);
-            if (loggedIn === undefined) {
-                return false;
-            }
+    const checkLoggedIn = async (): Promise<boolean> => {
+        for (let i = 0; i < 5; i++) {
+            const res = await chrome.runtime.sendMessage({kind: "checkLoggedIn"} satisfies CheckLoggedIn);
+            if (res !== undefined && res.loggedIn !== undefined) return res.loggedIn;
+            await new Promise(r => setTimeout(r, 150));
         }
-        return loggedIn.loggedIn;
+        console.warn("checkLoggedIn: no response after retries");
+        return false;
     };
 
     const checkWelcomeStatus = async () => {
@@ -66,16 +59,16 @@ const AuthGuard: React.FC = () => {
     }, []);
 
     useEffect(() => {
-        const callBack = async (message: {kind: "hookCreateUser" | "hookLoggedIn"}) => {
+        const callBack = (message: {kind: "hookCreateUser" | "hookLoggedIn"}) => {
             if (message.kind === "hookCreateUser") {
                 setAuthState(prev => ({...prev, isWelcomed: true}));
                 return;
             }
 
             if (message.kind === "hookLoggedIn") {
-                // IMPORTANT: re-check source of truth after the hook
-                const loggedIn = await checkLoggedIn();
-                setAuthState(prev => ({...prev, isLoggedIn: loggedIn}));
+                checkLoggedIn().then((loggedIn) => {
+                    setAuthState(prev => ({...prev, isLoggedIn: loggedIn}));
+                });
                 return;
             }
         };

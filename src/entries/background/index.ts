@@ -187,7 +187,7 @@ chrome.runtime.onMessage.addListener((message: Message, sender, sendResponse): b
         messageQueue = messageQueue.then(async () => {
             const response = await router(message);
             sendResponse(response)
-        });
+        }).catch(e => console.error(e));
         return true;
     }
 });
