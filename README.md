@@ -19,7 +19,7 @@ Firefox:
 5. Click "load temporary add on"
 6. Select the folder
 
-### Build Procedure
+## Build Procedure
 1. Check if your [Node.js](https://nodejs.org/) version is >= **18**.
 2. Clone this repository.
 3. Run `npm install` to install the dependencies.
@@ -65,5 +65,11 @@ All source code is located in in the `src` folder. Documentatino about how to co
 ---
 
 Credit: The Boilerplate for adding React and Webpack support as well as typescript was provided by [Chrome Extension Boilerplate React](https://github.com/lxieyang/chrome-extension-boilerplate-react)
+
+## Future Roadmap
+- [ ] Cloud signups
+- [ ] Backups on the cloud
+- [ ] End to end encrypted collaboration
+- [ ] List current tabs in UI
 
 Deonte Vanterpool | [Website](https://deontevanterpool.com)
