@@ -1,6 +1,22 @@
 # GranolaTabs
 GranolaTabs is a Chromium/Firefox extension that allows you to manage your tabs in the same way that you would manage a git repository. The syntax behind it is somewhat based on Unix and Git commands.
 
+## Table of Contents
+- [Installation](#installation)
+  - [Chrome](#chrome)
+  - [Firefox](#firefox)
+- [Build Procedure](#build-procedure)
+- [Usage](#usage)
+  - [touch \<name\>](#touch-name)
+  - [init \<name\>](#init-name)
+  - [commit "\<message\>"](#commit-message)
+  - [branch \<branchname\>](#branch-branchname)
+  - [checkout \<branchname\>](#checkout-branchname)
+- [Features](#features)
+- [Contributing](#contributing)
+- [Resources](#resources)
+- [Future Roadmap](#future-roadmap)
+
 ## Installation
 
 Chrome:
