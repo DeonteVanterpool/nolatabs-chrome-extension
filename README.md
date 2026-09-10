@@ -87,5 +87,6 @@ Credit: The Boilerplate for adding React and Webpack support as well as typescri
 - [ ] Backups on the cloud
 - [ ] End to end encrypted collaboration
 - [ ] List current tabs in UI
+- [ ] Get published on Chrome and Firefox webstore
 
 Deonte Vanterpool | [Website](https://deontevanterpool.com)
