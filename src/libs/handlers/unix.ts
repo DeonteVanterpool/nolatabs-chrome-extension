@@ -46,7 +46,10 @@ export async function handleCommit(args: string[]): Promise<Result<Commit, strin
         state.fetchCurrentlyOpenedBranchForRepo(repoId.value)
     ]);
 
-    const parent = await db.readBranchTip(currentlyOpenedBranchId);
+    if (currentlyOpenedBranchId.isErr) {
+        throw new Error("no currently opened branch for current repo");
+    }
+    const parent = await db.readBranchTip(currentlyOpenedBranchId.value);
     if (parent.isErr) {
         return err(parent.error);
     }
@@ -58,7 +61,7 @@ export async function handleCommit(args: string[]): Promise<Result<Commit, strin
     console.log("hash: ", hashInput.stringify())
     const hash = await crypto.sha2Hash(crypto.encode(hashInput.stringify()) as Uint8Array<ArrayBuffer>);
 
-    const branch = await db.fetchBranchById(currentlyOpenedBranchId);
+    const branch = await db.fetchBranchById(currentlyOpenedBranchId.value);
     if (branch.isErr) {
         return err(branch.error)
     }
@@ -68,7 +71,7 @@ export async function handleCommit(args: string[]): Promise<Result<Commit, strin
     const newCommit = createCommit(crypto.decode(hash), me.id, timestamp, message, difference, parents, branch.value.name);
 
     // update storage
-    await db.saveCommitAndUpdateBranch(repoId.value, newCommit, currentlyOpenedBranchId);
+    await db.saveCommitAndUpdateBranch(repoId.value, newCommit, currentlyOpenedBranchId.value);
 
     return ok(newCommit);
 }
@@ -129,7 +132,29 @@ export async function handleMerge(args: string[]): Promise<Result<Unit, string>>
 
     const branchName = args[0]
 
-    return await merge(branchName);
+    const currentlyOpenedRepoId = await helpers.getCurrentlyFocusedRepoId();
+    if (!currentlyOpenedRepoId || currentlyOpenedRepoId.isErr) {
+        return err("No repo is currently opened");
+    }
+
+    const currentlyOpenedBranchId = await state.fetchCurrentlyOpenedBranchForRepo(currentlyOpenedRepoId.value);
+    if (!currentlyOpenedBranchId || currentlyOpenedBranchId.isErr) {
+        return err("No branch is currently opened for the current repo");
+    }
+
+    const mergeResult = await merge(branchName);
+    if (mergeResult.isErr) {
+        return mergeResult;
+    };
+    const branchNameResult = await db.fetchBranchById(currentlyOpenedBranchId.value);
+    if (branchNameResult.isErr) {
+        return err(branchNameResult.error);
+    }
+    const checkoutResult = await checkout(branchNameResult.value.name);
+    if (checkoutResult.isErr) {
+        return checkoutResult;
+    }
+    return ok()
 }
 
 export async function merge(branchName: string): Promise<Result<Unit, string>> {
@@ -151,7 +176,11 @@ export async function merge(branchName: string): Promise<Result<Unit, string>> {
         return err("No branch is currently opened for this repo");
     }
 
-    const currentlyOpenedBranchTipRes = await db.readBranchTip(currentlyOpenedBranchId);
+    if (currentlyOpenedBranchId.isErr) {
+        return err("no branch currently checked out?")
+    }
+
+    const currentlyOpenedBranchTipRes = await db.readBranchTip(currentlyOpenedBranchId.value);
     if (currentlyOpenedBranchTipRes.isErr) {
         return err(currentlyOpenedBranchTipRes.error);
     }
@@ -177,12 +206,9 @@ export async function merge(branchName: string): Promise<Result<Unit, string>> {
 
     console.log("merged tabs:", mergedTabs)
 
-    const mergedTabsDiff = calculateDifference([currentlyOpenedBranchTip, branchToMergeTip], mergedTabs, snapshotReader);
-
-    console.log("merged tabs diff:", mergedTabsDiff)
     const timestamp = new Date();
     const me = await db.fetchMe();
-    const message = `Merge branch '${branchName}' into '${(await db.fetchBranchById(currentlyOpenedBranchId)).map(b => b.name).unwrapOr("unknown") ?? "unknown"}'`;
+    const message = `Merge branch '${branchName}' into '${(await db.fetchBranchById(currentlyOpenedBranchId.value)).map(b => b.name).unwrapOr("unknown") ?? "unknown"}'`;
 
     const parents = [currentlyOpenedBranchTip, branchToMergeTip];
     console.log("parents", parents)
@@ -191,17 +217,17 @@ export async function merge(branchName: string): Promise<Result<Unit, string>> {
     console.log("hash: ", hashInput.stringify())
     const hash = await crypto.sha2Hash(crypto.encode(hashInput.stringify()) as Uint8Array<ArrayBuffer>);
 
-    const branch = await db.fetchBranchById(currentlyOpenedBranchId);
+    const branch = await db.fetchBranchById(currentlyOpenedBranchId.value);
     if (branch.isErr) {
         return err(branch.error)
     }
     // create the commit
-    const newCommit = createCommit(crypto.decode(hash), me.id, timestamp, message, mergedTabsDiff, parents, branch.value.name);
+    const newCommit = createCommit(crypto.decode(hash), me.id, timestamp, message, {additions: [], deletions: []}, parents, branch.value.name);
 
     console.log("commit", newCommit);
 
     // update storage
-    await db.saveCommitAndUpdateBranch(repoId, newCommit, currentlyOpenedBranchId);
+    await db.saveCommitAndUpdateBranch(repoId, newCommit, currentlyOpenedBranchId.value);
 
     return ok();
 }
@@ -339,7 +365,10 @@ export async function branch(branchName: string): Promise<Result<string, string>
     const branch = git.createBranch(branchId, branchName, repoId)
 
     const currentlyOpenedBranchId = await state.fetchCurrentlyOpenedBranchForRepo(repoId);
-    const currentlyOpenedBranchTipRes = await db.readBranchTip(currentlyOpenedBranchId);
+    if (currentlyOpenedBranchId.isErr) {
+        return err("no currently opened branch?")
+    }
+    const currentlyOpenedBranchTipRes = await db.readBranchTip(currentlyOpenedBranchId.value);
     let currentlyOpenedBranchTip;
     if (currentlyOpenedBranchTipRes.isErr) {
         console.log("error reading currently opened branch tip: ", currentlyOpenedBranchTipRes.error)
@@ -442,12 +471,29 @@ async function edit(repoId: string): Promise<Result<Unit, string>> {
     }
 
     console.log("editing repo: ", repoId)
+    console.log("new edit")
     // prepare inputs to get the tabs from the repository we need to cd into
-    const currentlyOpenedBranchId = await state.fetchCurrentlyOpenedBranchForRepo(repoId);
+    let currentlyOpenedBranchId = await state.fetchCurrentlyOpenedBranchForRepo(repoId);
+    console.log("second line")
+    
+    if (currentlyOpenedBranchId.isErr) {
+        console.log("first branch")
+        const branches = (await db.fetchBranchesForRepo(repoId));
+        if (branches.isErr) {
+            console.log("second branch")
+            return err("unreachable. currentlyOpenedBranchId should exist");
+        }
+        currentlyOpenedBranchId = ok(branches.value[0].id)
+        await checkout(branches.value[0].name)
+        console.log("passed third branch")
+    }
+    if (currentlyOpenedBranchId.isErr) {
+        return err("unreachable. currentlyOpenedBranchId should exist");
+    }
 
     console.log("currentlyOpenedBranchId: ", currentlyOpenedBranchId)
     // update browser
-    await state.updateWindowStateForRepo(currentWindow.id, currentWindow.sessionId ?? null, repoId, currentlyOpenedBranchId);
+    await state.updateWindowStateForRepo(currentWindow.id, currentWindow.sessionId ?? null, repoId, currentlyOpenedBranchId.value);
     console.log("updated window state for repoId: ", repoId, "branchId: ", currentlyOpenedBranchId)
 
     return ok()
@@ -465,9 +511,9 @@ export async function renderGraph(): Promise<Result<string, string>> {
     const repoId = repoIdRes.value;
 
     const branchId = await state.fetchCurrentlyOpenedBranchForRepo(repoId);
-    if (!branchId) return err("No branch is currently opened for this repo");
+    if (!branchId || branchId.isErr) return err("No branch is currently opened for this repo");
 
-    const tip = await db.readBranchTip(branchId);
+    const tip = await db.readBranchTip(branchId.value);
     if (tip.isErr) return err(tip.error);
 
     if (!tip.value) {

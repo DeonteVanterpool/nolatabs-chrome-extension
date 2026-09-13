@@ -23,6 +23,7 @@ export function createCommit(hash: string, author: string, timestamp: Date, mess
     return commit;
 }
 
+/// Calculates the distance from parents to currenttabs
 export function calculateDifference(
     parents: string[],
     currentTabs: Tab[],

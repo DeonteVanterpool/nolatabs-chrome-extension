@@ -1,4 +1,6 @@
 import {Dexie, EntityTable} from 'dexie';
+import {Result} from 'true-myth';
+import {err, ok} from 'true-myth/result';
 Dexie.debug = true;
 
 interface State {
@@ -21,14 +23,19 @@ export default class LocalState extends Dexie {
 
 const db = new LocalState()
 
-export async function fetchCurrentlyOpenedBranchForRepo(repoId: string): Promise<string> {
+export async function fetchCurrentlyOpenedBranchForRepo(repoId: string): Promise<Result<string, string>> {
     const repoState = await db.state.where("repoId").equals(repoId).toArray();
     if (repoState.length === 0) {
-        throw new Error(`Repo state not found for repoId: ${repoId}`);
+        return err(`Repo state not found for repoId: ${repoId}`);
     } else if (repoState.length > 1) {
-        throw new Error(`Multiple windows are attached to the same repository`)
+        return err(`Multiple windows are attached to the same repository`);
     }
-    return repoState[0].branchId;
+    return ok(repoState[0].branchId);
+}
+
+export async function fetchBranchesForRepo(repoId: string): Promise<string[]> {
+    const repoState = await db.state.where("repoId").equals(repoId).toArray();
+    return repoState.map((v) => v.branchId);
 }
 
 export async function fetchCurrentlyOpenedRepositories(): Promise<string[]> {

@@ -59,7 +59,11 @@ const Main: React.FC<Props> = () => {
                         })
                         setSelectedRepo(repo);
                         fetchCurrentlyOpenedBranchForRepo(result.value).then((branchResult) => {
-                            db.fetchBranchById(branchResult).then((branch) => {
+                            if (branchResult.isErr) {
+                                console.log(branchResult.error)
+                                return;
+                            }
+                            db.fetchBranchById(branchResult.value).then((branch) => {
                                 if (branch.isOk) {
                                     setSelectedBranch(branch.value.name);
                                 }
