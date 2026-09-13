@@ -1,6 +1,6 @@
 {
     "manifest_version": 3,
-    "name": "NolaTabs - Git Based Tab Manager",
+    "name": "GranolaTabs - Git Based Tab Manager",
     "description": "This is a chrome extension for managing your tabs efficiently. Behind the scenes, it is based on Git version control system. This makes it powerful because it allows you a lot of flexibility in managing and versioning your tabs. For the average user, it is a simple tab manager that allows you to save and restore your tabs easily. For the power user, it is a powerful tool that allows you to manage your tabs like a pro.",
     "options_page": "options.html",
     "background": {
@@ -33,7 +33,7 @@
                 "default": "Alt+Period",
                 "mac": "Alt+Period"
             },
-            "description": "Run NolaTabs command pallete."
+            "description": "Run GranolaTabs command pallete."
         }
     },
     "permissions": [

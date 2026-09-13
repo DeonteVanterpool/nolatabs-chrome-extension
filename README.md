@@ -1,4 +1,4 @@
-# NolaTabs Chrome Extension
+# GranolaTabs Browser Extension
 
 ## Installation
 
