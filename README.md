@@ -16,7 +16,6 @@ GranolaTabs is a Chromium/Firefox extension that allows you to manage your tabs 
 - [Contributing](#contributing)
 - [Resources](#resources)
 - [Future Roadmap](#future-roadmap)
->>>>>>> 51d660101f161aa6e1c28fed5f4cd63a9c86e104
 
 ## Installation
 
