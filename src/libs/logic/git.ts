@@ -101,10 +101,14 @@ function getSnapshot(graph: CommitGraph, head: string): Tab[] {
             throw new Error(`Parent commit ${c.parents[0]} not found`);
         }
     } else { // merge commit (no evil merges!)
-        let commonAncestorHash = getCommonAncestor(graph, c.parents);
-        let diff = aggregateDiffs(graph, c.parents);
-        let snapshot = getSnapshot(graph, commonAncestorHash!);
-        return apply(snapshot, diff);
+        const mergedUrls = new Map<string, Tab>();
+        for (const parentHash of c.parents) {
+            const parentSnapshot = getSnapshot(graph, parentHash);
+            for (const tab of parentSnapshot) {
+                mergedUrls.set(tab.url, tab);  // Last-write-wins for duplicates
+            }
+        }
+        return Array.from(mergedUrls.values());
     }
 }
 
