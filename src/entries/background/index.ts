@@ -26,6 +26,10 @@ chrome.windows.onCreated.addListener(async (window) => {
 });
 
 chrome.windows.onFocusChanged.addListener(async (windowId) => {
+    if (windowId < 0) {
+        console.warn("[focusChange] window id was <0")
+        return;
+    }
     if ((await chrome.windows.get(windowId)).type === "normal") {
         await openWelcomePage();
     }
@@ -172,7 +176,7 @@ const router = async (message: Message) => {
 chrome.runtime.onMessage.addListener((message: Message, sender, sendResponse): boolean | any => {
     console.log("origin", sender.origin)
     console.log("runtime.id", chrome.runtime.id)
-    if (sender.origin !== chrome.runtime.id && chrome.runtime.id !== "deonte@asimslaboratory.com") {
+    if (sender.id !== chrome.runtime.id) {
         return false;
     }
     console.log("Received message: ", message);

@@ -1,6 +1,10 @@
 import {Tab} from "src/models/git";
 
 export async function clearUnpinnedTabs(windowId: number): Promise<void> {
+    if (windowId <= 0) {
+        console.warn("[clearUnpinnedTabs] Invalid window ID:", windowId, "- skipping browser operations");
+        return;
+    }
     let tabs = await chrome.tabs.query({windowId, pinned: false});
     const tabIds = tabs.map((t) => t.id).filter((id) => id !== undefined);
 
@@ -12,6 +16,10 @@ export async function clearUnpinnedTabs(windowId: number): Promise<void> {
 // TODO: create tabs / sync between tab states based on diffs/delta changes for more efficiency
 /** Creates new tabs with the given urls. The tabs will be created in the current window and will be inactive. */
 export async function createTabs(windowId: number, urls: string[]): Promise<void> {
+    if (windowId <= 0) {
+        console.warn("[createTabs] Invalid window ID:", windowId, "- skipping browser operations");
+        return;
+    }
     for (const url of urls) {
         await chrome.tabs.create({ url, active: false, windowId });
     }
@@ -19,6 +27,10 @@ export async function createTabs(windowId: number, urls: string[]): Promise<void
 
 /** Returns all unpinned tabs in the current window. */
 export async function getUnpinnedTabs(windowId: number): Promise<Tab[]> {
+    if (windowId <= 0) {
+        console.warn("[getUnpinnedTabs] Invalid window ID:", windowId, "- skipping browser operations");
+        return [];
+    }
 
     let tabs: Tab[] = (await chrome.tabs.query({windowId, pinned: false})).map((tab) => {
         if (!tab.url) {
@@ -32,6 +44,10 @@ export async function getUnpinnedTabs(windowId: number): Promise<Tab[]> {
 
 /** Adds all unpinned tabs in the current window to a tab group with the given title. If a tab group with the given title already exists, the tabs will be added to that group. Otherwise, a new tab group will be created. */
 export async function addAllTabsToGroup(windowId: number, title: string): Promise<void> {
+    if (windowId <= 0) {
+        console.warn("[addAllTabsToGroup] Invalid window ID:", windowId, "- skipping browser operations");
+        return;
+    }
     let tabs = await chrome.tabs.query({windowId, pinned: false});
     let tabIds = tabs.map((t) => t.id!).filter((id) => !!id) as number[];
     let group = (await chrome.tabGroups.query({title: title}));

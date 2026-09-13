@@ -574,6 +574,10 @@ const openBranchTabs = async (wid: number, repoId: string, branchId: string) => 
         const latestSnapshotTabs = branchTip.value ? buildSnapshot(commitGraph, branchTip.value).map((t) => t.url) : []; // if there is no branch tip, then we have no tabs to open because the snapshot is empty
         console.log(latestSnapshotTabs);
         console.log("clearing unpinned tabs for windowId: ", wid)
+        if (wid <= 0) {
+            console.warn("[openBranchTabs] Invalid window ID:", wid, "- skipping browser operations");
+            return;
+        }
         const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
         await browserWindow.clearUnpinnedTabs(wid);
         while ((await browserWindow.getUnpinnedTabs(wid)).length !== 0) {
