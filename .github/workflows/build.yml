@@ -2,61 +2,117 @@ name: Build
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        node-version: [22.x]
-
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ matrix.node-version }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
 
-    - name: Install Rust
-      run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+      - name: Install Rust
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
 
-    - name: Install Wasm-Pack
-      run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+      - name: Install wasm target and wasm-pack
+        run: |
+          rustup target add wasm32-unknown-unknown
+          curl -sSf https://rustwasm.github.io/wasm-pack/installer/init.sh | sh
 
-    - name: Build Firefox
-      run: |
-        npm ci --legacy-peer-deps
-        npm run build:firefox
-        mkdir -p output
-        ( cd dist/firefox && zip -r -X "$GITHUB_WORKSPACE/output/firefox.zip" . -x '*.DS_Store' )
+      - name: Install deps
+        run: npm ci --legacy-peer-deps
 
-    - name: Build Chrome
-      run: |
-        npm ci --legacy-peer-deps
-        npm run build:chrome
-        ( cd dist/chrome && zip -r -X "$GITHUB_WORKSPACE/output/chrome.zip" . -x '*.DS_Store' )
+      - name: Build Firefox
+        run: npm run build:firefox
 
-    - name: Create New Tag
-      id: createNewTag
-      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-      uses: anothrNick/github-tag-action@1.75.0
-      env:
-        GITHUB_TOKEN: ${{ secrets.BUNDLE_GIT_TOKEN }}
-        WITH_V: true
-        DRY_RUN: false
+      - name: Package Firefox
+        run: |
+          mkdir -p output
+          ( cd dist/firefox && zip -r -X "$GITHUB_WORKSPACE/output/firefox.zip" . -x '*.DS_Store' )
 
-    - name: Release
-      uses: softprops/action-gh-release@v3
-      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-      env:
-        GITHUB_TOKEN: ${{ secrets.BUNDLE_GIT_TOKEN }}
-      with:
-        tag_name: ${{ steps.createNewTag.outputs.new_tag }}
-        files: |
-          output/firefox.zip
-          output/chrome.zip
+      - name: Build Chrome
+        run: npm run build:chrome
+
+      - name: Package Chrome
+        run: |
+          ( cd dist/chrome && zip -r -X "$GITHUB_WORKSPACE/output/chrome.zip" . -x '*.DS_Store' )
+
+      - name: Verify packages
+        run: |
+          set -euo pipefail
+          for f in output/firefox.zip output/chrome.zip; do
+            unzip -Z1 "$f" | grep -qx 'manifest.json' \
+              || { echo "::error file=$f::manifest.json is not at the archive root"; unzip -Z1 "$f" | head -20; exit 1; }
+          done
+          echo "both packages have manifest.json at root"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: extension-packages
+          path: output/*.zip
+          if-no-files-found: error
+
+  release:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: extension-packages
+          path: output
+
+      - name: Create and push tag
+        id: tag
+        run: |
+          set -euo pipefail
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          latest=$(git describe --tags --abbrev=0 --match 'v*' 2>/dev/null || echo "v0.0.0")
+          echo "latest tag: $latest"
+
+          if [ "$(git rev-parse "$latest^{commit}")" = "$(git rev-parse HEAD)" ]; then
+            echo "HEAD already tagged $latest - nothing to do"
+            echo "new_tag=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          IFS=. read -r major minor patch <<< "${latest#v}"
+          next="v${major}.${minor}.$((patch + 1))"
+          echo "next tag: $next"
+
+          git tag -a "$next" -m "$next"
+          git push origin "$next"
+          echo "new_tag=$next" >> "$GITHUB_OUTPUT"
+
+      - name: Release
+        if: steps.tag.outputs.new_tag != ''
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ steps.tag.outputs.new_tag }}
+          name: ${{ steps.tag.outputs.new_tag }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: |
+            output/firefox.zip
+            output/chrome.zip
