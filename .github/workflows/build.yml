@@ -33,17 +33,18 @@ jobs:
         npm ci --legacy-peer-deps
         npm run build:firefox
         mkdir -p output
-        zip output/firefox.zip dist/firefox/*
+        ( cd dist/firefox && zip -r -X "$GITHUB_WORKSPACE/output/firefox.zip" . -x '*.DS_Store' )
 
     - name: Build Chrome
       run: |
         npm ci --legacy-peer-deps
         npm run build:chrome
-        zip output/chrome.zip dist/chrome/*
+        ( cd dist/chrome && zip -r -X "$GITHUB_WORKSPACE/output/chrome.zip" . -x '*.DS_Store' )
 
     - name: Create New Tag
       id: createNewTag
-      uses: anothrNick/github-tag-action@1.64.0
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      uses: anothrNick/github-tag-action@1.75.0
       env:
         GITHUB_TOKEN: ${{ secrets.BUNDLE_GIT_TOKEN }}
         WITH_V: true
@@ -51,7 +52,7 @@ jobs:
 
     - name: Release
       uses: softprops/action-gh-release@v3
-      if: github.event.ref && github.ref == 'refs/heads/main'
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
       env:
         GITHUB_TOKEN: ${{ secrets.BUNDLE_GIT_TOKEN }}
       with:
